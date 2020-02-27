@@ -7,8 +7,6 @@ const app = express();
 const uri = "mongodb+srv://aaron:aaron@esc-mongo-4dgm3.mongodb.net/test?retryWrites=true&w=majority"
 mongoose.connect(uri,{useNewUrlParser: true, useUnifiedTopology: true });
 
-app.use(express.static('./public'));
-
 //middleware
 app.use(bodyParser.json());
 
@@ -20,7 +18,6 @@ app.use(function(err,req,res,next){
     console.log(err.message);
     res.status(422).send({error: err.message})
 });
-
 
 // listening
 app.listen(process.env.port || 8080, function(){
