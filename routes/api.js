@@ -5,8 +5,9 @@ const Agent = require('../models/agent');
 //mounting handlers
 router.get("/agents", function(req,res,next){
         console.log('GET received');
-        if (req.body.category) {
-            console.log("Category field needed")
+        if (!req.body.category) {
+            console.log("Category field needed");
+            res.send("GET denied, request needs a category field!");
         }
 
         Agent.findOneAndUpdate({available: true, category: req.body.category},{available:false},function(err,agent){

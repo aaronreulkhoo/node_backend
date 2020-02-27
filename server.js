@@ -14,7 +14,7 @@ app.use(express.static('public'))
 app.use(bodyParser.json());
 
 // route setup
-app.use('/api',require('./routes/api'));
+app.use('/api', require('./routes/api'));
 
 //error handling
 app.use(function(err,req,res,next){
@@ -25,6 +25,6 @@ app.use(function(err,req,res,next){
 // listening
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Our app is running on port ${ PORT }`);
+    console.log(`Listening on port ${PORT}...`);
 });
 
