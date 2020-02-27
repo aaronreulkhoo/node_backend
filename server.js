@@ -7,6 +7,7 @@ const app = express();
 const uri = "mongodb+srv://aaron:aaron@esc-mongo-4dgm3.mongodb.net/test?retryWrites=true&w=majority"
 mongoose.connect(uri,{useNewUrlParser: true, useUnifiedTopology: true });
 
+app.use(express.static('public'));
 
 //middleware
 app.use(bodyParser.json());
@@ -22,7 +23,7 @@ app.use(function(err,req,res,next){
 
 
 // listening
-app.listen(process.env.port || 4000, function(){
+app.listen(process.env.port || 8080, function(){
     console.log('listening...');
 });
 
