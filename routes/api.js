@@ -10,7 +10,10 @@ router.get("/agents", function(req,res,next){
             res.send("GET denied, request needs a category field!");
         }
 
-        Agent.findOneAndUpdate({available: true, category: req.body.category},{available:false},function(err,agent){
+        Agent.updateOne({available: true, category: req.body.category},{available:false},function(err,agent){
+            if(!agent) {
+                res.send("No agents found, sorry!")
+            }
             res.send(agent);
         }).catch(next);
 });
@@ -24,7 +27,7 @@ router.post("/agents", function(req,res,next){
 
 router.put("/agents/:id", function(req,res){
     console.log('PUT received');
-    Agent.findByIdAndUpdate({_id:req.params.id}, req.body).then(function(agent){
+    Agent.updateOne({_id:req.params.id}, req.body).then(function(agent){
         res.send(agent)
     });
 });
