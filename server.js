@@ -23,44 +23,48 @@ app.listen(PORT, () => {
 
 /*-----------------------Rainbow API SDK*/
 // Load the SDK
-let RainbowSDK = require("rainbow-node-sdk");
-
-// Define your configuration
-let options = {
-    "rainbow": {
-        "host": "sandbox",
-    },
-    "credentials": {
-        "login": "bot@mycompany.com",
-        "password": "thePassword!123"
-    },
-    "application": {
-        "appID": "",
-        "appSecret": "",
-    },
-    // Logs options
-    "logs": {
-        "enableConsoleLogs": true,            // Default: true
-        "enableFileLogs": false,              // Default: false
-        "file": {
-            "path": '/var/tmp/rainbowsdk/',   // Default path used
-            "level": 'debug'                  // Default log level used
-        }
-    },
-    ProxyImpl
-    "proxy": {
-        "host": '192.168.0.254',
-        "port": 8080,
-        "protocol": 'http',
-        "user": "",
-        "password": ""
-    },
-    // IM options
-    "im": {
-        "sendReadReceipt": true   // True to send the the 'read' receipt automatically
-    }
-};
-
-// Instantiate the SDK
-let rainbowSDK = new RainbowSDK(options);
-rainbowSDK.start();
+// let RainbowSDK = require("rainbow-node-sdk");
+//
+// // Define your configuration
+// let options = {
+//     rainbow: {
+//         host: "sandbox"
+//     },
+//     credentials: {
+//         login: "aaronkhoo@live.com", // To replace by your developer credendials
+//         password: "6]<epFf$Er'0" // To replace by your developer credentials
+//     },
+//     // Application identifier
+//     application: {
+//         appID: "a58cfac05b0711eabf7e77d14e87b936",
+//         appSecret: "JnjQaOpCW9Pc3u2IUQAvyjyiAEINpBo47Vb5S3jSUxHdgQkc3pqFFXGHJPojXbGu"
+//     },
+//     // Logs options
+//     logs: {
+//         enableConsoleLogs: true,
+//         enableFileLogs: false,
+//         "color": true,
+//         "level": 'debug',
+//         "customLabel": "acorn-backend",
+//         "system-dev": {
+//             "internals": false,
+//             "http": false,
+//         },
+//         file: {
+//             path: "/var/tmp/rainbowsdk/",
+//             customFileName: "R-SDK-Node-Sample2",
+//             level: "debug",
+//             zippedArchive : false/*,
+//             maxSize : '10m',
+//             maxFiles : 10 // */
+//         }
+//     },
+//     // IM options
+//     im: {
+//         sendReadReceipt: true
+//     }
+// };
+//
+// // Instantiate the SDK
+// let rainbowSDK = new RainbowSDK(options);
+// rainbowSDK.start();

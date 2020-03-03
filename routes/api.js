@@ -10,11 +10,12 @@ router.get("/agents", function(req,res,next){
             res.send("GET denied, request needs a category field!");
         }
 
-        Agent.updateOne({available: true, category: req.body.category},{available:false},function(err,agent){
+        Agent.findOne({available: true, category: req.body.category},{available:false},function(err,agent){
             if(!agent) {
                 res.send("No agents found, sorry!")
+            } else {
+                res.send(agent);
             }
-            res.send(agent);
         }).catch(next);
 });
 
