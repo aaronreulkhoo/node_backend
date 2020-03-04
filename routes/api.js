@@ -16,7 +16,7 @@ router.get("/agents", async(req,res,next) => {
 
         Agent.findOne({available: true, category: req.query.category},function(err,agent){
             if(!agent) {
-                Queue.create(req.query).then(function(queue){
+                Queue.create({category:req.query.category, guestId: "hello"}).then(function(queue){
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
