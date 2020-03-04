@@ -23,9 +23,11 @@ router.get("/agents", async(req,res,next) => {
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
-                res.send("No Agent Available!");
-                res.send(agent);
+                //res.send(agent);
                 //update agent field
+                Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
+                    res.send(updated);
+                });
             }
         }).catch(next);
 });
