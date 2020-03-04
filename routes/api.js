@@ -10,9 +10,6 @@ router.get("/agents", async(req,res,next) => {
             if (!req.body.category) {
                 throw new Error('GET Request Needs Category Number Field');
             }
-            if (!req.body.guestId || typeof req.body.guestId!="string" ) {
-                throw new Error('GET Request Needs GuestID String Field')
-            }
         } catch (e) {
             console.log(e.message);
         }
@@ -23,11 +20,11 @@ router.get("/agents", async(req,res,next) => {
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
-                //res.send(agent);
+                res.send(agent);
                 //update agent field
-                Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
-                    res.send(updated);
-                });
+                //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
+                //    res.send(updated);
+                //});
             }
         }).catch(next);
 });
@@ -44,6 +41,9 @@ router.patch("/agents/:id", async (req,res) => { // sync must catch errors
     Agent.updateOne({_id:req.params.id}, req.body).then(function(agent){
         res.send(agent)
         //TODO: Scan and remove waiting people from queue
+        //Queue.findOneAndRemove({category:req.category}, function(err, removed){
+        //    res.send(removed);
+        //});
     });
 });
 
