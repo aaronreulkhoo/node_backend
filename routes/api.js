@@ -1,20 +1,30 @@
 const express = require('express');
 const router=express.Router();
 const Agent = require('../models/agent');
+const Queue = require('../models/queue');
 
 //mounting handlers
-router.get("/agents", function(req,res,next){
-        console.log('GET received');
-        if (!req.body.category) {
-            console.log("Category field needed");
-            res.send("GET denied, request needs a category field!");
+router.get("/agents", async(req,res,next) => {
+        try {
+            console.log('GET received');
+            if (!req.body.category) {
+                throw new Error('GET Request Needs Category Number Field');
+            }
+            if (!req.body.guestId || typeof req.body.guestId!="string" ) {
+                throw new Error('GET Request Needs GuestID String Field')
+            }
+        } catch (e) {
+            console.log(e.message);
         }
 
-        Agent.findOne({available: true, category: req.body.category},{available:false},function(err,agent){
+        Agent.findOne({available: true, category: req.body.category},function(err,agent){
             if(!agent) {
-                res.send("No agents found, sorry!")
+                Queue.create(req.body).then(function(queue){
+                    res.send("You've been put in queue!");
+                }).catch(next);
             } else {
                 res.send(agent);
+                //update agent field
             }
         }).catch(next);
 });
@@ -26,10 +36,11 @@ router.post("/agents", function(req,res,next){
     }).catch(next);
 });
 
-router.put("/agents/:id", function(req,res){
+router.patch("/agents/:id", async (req,res) => { // sync must catch errors
     console.log('PUT received');
     Agent.updateOne({_id:req.params.id}, req.body).then(function(agent){
         res.send(agent)
+        //TODO: Scan and remove waiting people from queue
     });
 });
 
@@ -37,7 +48,5 @@ router.delete("/agents/:id", function(req,res,next){
     console.log('DELETE received');
     res.send({type:"DELETE"});
 });
-
-
 
 module.exports = router;
