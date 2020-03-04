@@ -3,6 +3,7 @@ const bodyParser=require('body-parser');
 const db = require('./db');
 const http = require('http');
 const socketIo = require('socket.io');
+const cors = require('cors');
 
 const PORT = process.env.PORT || 3000;
 
@@ -20,6 +21,7 @@ async function createServer() {
         process.exit(1);
     }
 
+    app.use(cors());
     app.use(express.static('public')); // serve simple html
     app.use(bodyParser.json()); //middleware
     app.use('/api', require('./routes/api')); // route setup
