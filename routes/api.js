@@ -7,15 +7,16 @@ const Queue = require('../models/queue');
 router.get("/agents", async(req,res,next) => {
         try {
             console.log('GET received');
-            if (!req.body.category) {
+            if (!req.query.category) {
                 throw new Error('GET Request Needs Category Number Field');
             }
         } catch (e) {
             console.log(e.message);
         }
-        Agent.findOne({available: true, category: req.body.category},function(err,agent){
+
+        Agent.findOne({available: true, category: req.query.category},function(err,agent){
             if(!agent) {
-                Queue.create(req.body).then(function(queue){
+                Queue.create(req.query).then(function(queue){
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
@@ -36,6 +37,9 @@ router.patch("/agents/:id", async (req,res) => { // sync must catch errors
     Agent.updateOne({_id:req.params.id}, req.body).then(function(agent){
         res.send(agent)
         //TODO: Scan and remove waiting people from queue
+        //Queue.findOneAndRemove({category:req.category}, function(err, removed){
+        //    res.send(removed);
+        //});
     });
 });
 
