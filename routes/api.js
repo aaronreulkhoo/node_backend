@@ -18,7 +18,7 @@ router.get("/agents", async(req,res,next) => {
         }
 
         Agent.findOne({available: true, category: req.body.category},function(err,agent){
-            if(agent) {
+            if(!agent) {
                 Queue.create(req.body).then(function(queue){
                     res.send("You've been put in queue!");
                 }).catch(next);
