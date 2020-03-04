@@ -3,7 +3,6 @@ const router=express.Router();
 const Agent = require('../models/agent');
 const Queue = require('../models/queue');
 
-
 //mounting handlers
 router.get("/agents", async(req,res,next) => {
         try {
@@ -11,13 +10,9 @@ router.get("/agents", async(req,res,next) => {
             if (!req.body.category) {
                 throw new Error('GET Request Needs Category Number Field');
             }
-            if (!req.body.guestId || typeof req.body.guestId!="string" ) {
-                throw new Error('GET Request Needs GuestID String Field')
-            }
         } catch (e) {
             console.log(e.message);
         }
-
         Agent.findOne({available: true, category: req.body.category},function(err,agent){
             if(!agent) {
                 Queue.create(req.body).then(function(queue){
@@ -25,7 +20,6 @@ router.get("/agents", async(req,res,next) => {
                 }).catch(next);
             } else {
                 res.send(agent);
-                //update agent field
             }
         }).catch(next);
 });
