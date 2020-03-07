@@ -6,6 +6,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const Agent = require('./models/agent');
+const router = require('./routes/api');
 
 const PORT = process.env.PORT || 3000;
 
@@ -26,7 +27,6 @@ async function createServer() {
     app.use(cors());
     app.use(express.static('public')); // serve simple html
     app.use(bodyParser.json()); //middleware
-    app.use(bodyParser.urlencoded({ extended: true }));
     app.use('/api', require('./routes/api')); // route setup
     app.use(function(err, req, res, next) { //error handling
         console.log(err.message);
@@ -92,39 +92,43 @@ let options = {
 let rainbowSDK = new RainbowSDK(options);
 rainbowSDK.start();
 rainbowSDK.events.on("rainbow_onready", () => {
-    rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
-        // Do something when the guest has been created and added to that company
-            let guestFirstname = "Jean";
-            let guestLastname = "Dupont";
-            let language = "en-US";
-            let ttl = 86400 // active for a day
-            router.get("/agentss", async(req,res,next) => {
-                try {
-                    console.log('GET received');
-                    if (!req.query.category) {
-                        throw new Error('GET Request Needs Category Number Field');
-                    }
-                } catch (e) {
-                    console.log(e.message);
+    let guestFirstname = "Jean";
+    let guestLastname = "Dupont";
+    let language = "en-US";
+    let ttl = 86400 // active for a day
+
+    //rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
+    // Do something when the guest has been created and added to that company
+        router.get("/agentss", async(req,res,next) => {
+            try {
+                console.log('GET received');
+                if (!req.query.category) {
+                    throw new Error('GET Request Needs Category Number Field');
                 }
-        
+            } catch (e) {
+                console.log(e.message);
+            }
+            rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
                 Agent.findOne({available: true, category: req.query.category},function(err,agent){
                     if(!agent) {
                         Queue.create(req.query).then(function(queue){
                             res.send("You've been put in queue!");
                         }).catch(next);
                     } else {
-                        res.send(agent);
+                        res.send({agent: agent, guest: guest});
                         //update agent field
                         //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
                         //    res.send(updated);
                         //});
                     }
                 }).catch(next);
+            });
         });
-        
-        
-    }).catch((err) => {
-        // Do something in case of error
-    });
+    
+    
+}).catch((err) => {
+    // Do something in case of error
+//});
 });
+
+module.exports(rainbowSDK);
