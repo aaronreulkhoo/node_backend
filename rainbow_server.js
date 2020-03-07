@@ -42,8 +42,6 @@ async function createServer() {
     // });
 }
 createServer();
-const uri = "mongodb+srv://zilin_wang:200041238@cluster0-zcgfy.gcp.mongodb.net/test?retryWrites=true&w=majority";
-mongoose.connect(uri,{useNewUrlParser: true, useUnifiedTopology: true });
 
 
 /*-----------------------Rainbow API SDK*/
@@ -96,7 +94,10 @@ rainbowSDK.start();
 rainbowSDK.events.on("rainbow_onready", () => {
     rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
         // Do something when the guest has been created and added to that company
-            app.get('/api', (req, res) => res.json(guest));
+            let guestFirstname = "Jean";
+            let guestLastname = "Dupont";
+            let language = "en-US";
+            let ttl = 86400 // active for a day
             router.get("/agentss", async(req,res,next) => {
                 try {
                     console.log('GET received');
@@ -114,7 +115,6 @@ rainbowSDK.events.on("rainbow_onready", () => {
                         }).catch(next);
                     } else {
                         res.send(agent);
-                        
                         //update agent field
                         //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
                         //    res.send(updated);
