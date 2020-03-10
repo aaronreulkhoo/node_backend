@@ -1,27 +1,48 @@
 const express = require('express');
 const bodyParser=require('body-parser');
 const mongoose = require('mongoose');
-const router = require('./routes/api');
+const db = require('./db');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
 const Agent = require('./models/agent');
+const router = require('./routes/api');
+
+const PORT = process.env.PORT || 3000;
 
 // setting up express
-const app = express();
-const uri = "mongodb+srv://zilin_wang:200041238@cluster0-zcgfy.gcp.mongodb.net/test?retryWrites=true&w=majority";
-mongoose.connect(uri,{useNewUrlParser: true, useUnifiedTopology: true });
+async function createServer() {
+    const app = express();
 
-app.use(express.static('public')); // serve simple html
-app.use(bodyParser.json()); //middleware
-app.use('/api', require('./routes/api')); // route setup
-app.use(function(err,req,res,next){ //error handling
-    console.log(err.message);
-    res.status(422).send({error: err.message})
-});
+    const httpServer = http.Server(app);
+    const io = socketIo(httpServer);
+
+    try {
+        await db.connect({io})
+    } catch (error) {
+        console.error('Unable to connect to Atlas Cluster', error);
+        process.exit(1);
+    }
+
+    app.use(cors());
+    app.use(express.static('public')); // serve simple html
+    app.use(bodyParser.json()); //middleware
+    app.use('/api', require('./routes/api')); // route setup
+    app.use(function(err, req, res, next) { //error handling
+        console.log(err.message);
+        res.status(422).send({error: err.message})
+    });
 
 // api
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Listening on port ${PORT}...`);
-});
+    httpServer.listen(PORT, () => {
+        console.log(`Server listening to Port ${PORT}...`);
+    });
+    // app.listen(PORT, () => {
+    //     console.log(`Listening on port ${PORT}...`);
+    // });
+}
+createServer();
+
 
 /*-----------------------Rainbow API SDK*/
 // Load the SDK
@@ -70,14 +91,13 @@ let options = {
 // // Instantiate the SDK
 let rainbowSDK = new RainbowSDK(options);
 rainbowSDK.start();
-
 rainbowSDK.events.on("rainbow_onready", () => {
     let guestFirstname = "Jean";
     let guestLastname = "Dupont";
     let language = "en-US";
     let ttl = 86400 // active for a day
 
-    rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
+    //rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
     // Do something when the guest has been created and added to that company
         router.get("/agentss", async(req,res,next) => {
             try {
@@ -88,59 +108,27 @@ rainbowSDK.events.on("rainbow_onready", () => {
             } catch (e) {
                 console.log(e.message);
             }
-    
-            Agent.findOne({available: true, category: req.query.category},function(err,agent){
-                if(!agent) {
-                    Queue.create(req.query).then(function(queue){
-                        res.send("You've been put in queue!");
-                    }).catch(next);
-                } else {
-                    res.send(agent);
-                    //update agent field
-                    //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
-                    //    res.send(updated);
-                    //});
-                }
-            }).catch(next);
-    });
+            rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
+                Agent.findOne({available: true, category: req.query.category},function(err,agent){
+                    if(!agent) {
+                        Queue.create(req.query).then(function(queue){
+                            res.send("You've been put in queue!");
+                        }).catch(next);
+                    } else {
+                        res.send({agent: agent, guest: guest});
+                        //update agent field
+                        //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
+                        //    res.send(updated);
+                        //});
+                    }
+                }).catch(next);
+            });
+        });
     
     
 }).catch((err) => {
     // Do something in case of error
+//});
 });
-});
-// let con  = [];
-// var bub;
-// rainbowSDK.events.on("rainbow_onready", () => {
-    
-//     let utc = new Date().toJSON().replace(/-/g, '/');
-//     rainbowSDK.bubbles.createBubble("TestInviteByEmails" + utc, "TestInviteByEmails" + utc).then((bubble) => {
-//         let contacts = [];
-//         contacts.push("zilin_wang@mymail.sutd.edu.sg");
-//         con = contacts;
-//         let invitedAsModerator = false;     // To set to true if you want to invite someone as a moderator
-//         let sendAnInvite = false;            // To set to false if you want to add someone to a bubble without having to invite him first
-//         let inviteReason = "bot-invite";    // Define a reason for the invite (part of the invite received by the recipient)
-//         rainbowSDK.bubbles.inviteContactsByEmailsToBubble(contacts, bubble, invitedAsModerator, sendAnInvite, inviteReason).then(async(bubble) => {
-//             console.log("Added in!")
-//         });
-//     });
-// });
 
-// rainbowSDK.events.on("rainbow_onstopped", () => {
-//     let id = '5e5f95fb241f882a1d01b3cf';
-//     rainbowSDK.bubbles.getBubbleById(id).then(function(bubble) {
-//         // do something with the bubble
-//         rainbowSDK.bubbles.deleteBubble(bubble).then(function() {
-//             // do something once the bubble has been deleted
-//             console.log("Deleted!")
-//         }).catch(function(err) {
-//             // do something if you can't delete the bubble
-            
-//         });
-//     }).catch(function(err) {
-//         // do something if something went wrong by getting the bubble
-//         throw err;
-//     })
-    
-// });
+module.exports(rainbowSDK);

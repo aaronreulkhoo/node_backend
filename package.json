@@ -16,7 +16,7 @@
     "socket.io": "^2.3.0"
   },
   "engines": {
-    "node": "10.15.1"
+    "node": "13.9.0"
   },
   "devDependencies": {
     "cors": "^2.8.5",
