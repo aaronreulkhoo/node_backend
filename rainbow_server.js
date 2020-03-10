@@ -50,47 +50,74 @@ let RainbowSDK = require("rainbow-node-sdk");
 
 // // Define your configuration
 let options = {
-     rainbow: {
-         host: "sandbox"
-     },
-     credentials: {
-         login: "aaronkhoo@live.com", // To replace by your developer credendials
-         password: "6]<epFf$Er'0" // To replace by your developer credentials
-     },
-     // Application identifier
-     application: {
-         appID: "a58cfac05b0711eabf7e77d14e87b936",
-         appSecret: "JnjQaOpCW9Pc3u2IUQAvyjyiAEINpBo47Vb5S3jSUxHdgQkc3pqFFXGHJPojXbGu"
-     },
-     // Logs options
-     logs: {
-         enableConsoleLogs: true,
-         enableFileLogs: false,
-         "color": true,
-         "level": 'debug',
-         "customLabel": "acorn-backend",
-         "system-dev": {
-             "internals": false,
-             "http": false,
-         },
-         file: {
-             path: "/var/tmp/rainbowsdk/",
-             customFileName: "R-SDK-Node-Sample2",
-             level: "debug",
-             zippedArchive : false/*,
-             maxSize : '10m',
-             maxFiles : 10 // */
-         }
-     },
-     // IM options
-     im: {
-         sendReadReceipt: true
-     }
+    rainbow: {
+        host: "sandbox"
+    },
+    credentials: {
+        login: "aaronkhoo@live.com", // To replace by your developer credendials
+        password: "6]<epFf$Er'0" // To replace by your developer credentials
+    },
+    // Application identifier
+    application: {
+        appID: "a58cfac05b0711eabf7e77d14e87b936",
+        appSecret: "JnjQaOpCW9Pc3u2IUQAvyjyiAEINpBo47Vb5S3jSUxHdgQkc3pqFFXGHJPojXbGu"
+    },
+    // Logs options
+    logs: {
+        enableConsoleLogs: true,
+        enableFileLogs: false,
+        "color": true,
+        "level": 'debug',
+        "customLabel": "acorn-backend",
+        "system-dev": {
+            "internals": false,
+            "http": false,
+        },
+        file: {
+            path: "/var/tmp/rainbowsdk/",
+            customFileName: "R-SDK-Node-Sample2",
+            level: "debug",
+            zippedArchive : false/*,
+            maxSize : '10m',
+            maxFiles : 10 // */
+        }
+    },
+    // IM options
+    im: {
+        sendReadReceipt: true
+    }, 
+    servicesToStart: {
+        "bubbles":  {
+            "start_up":true,
+        }, //need services : 
+        "telephony":  {
+            "start_up":true,
+        }, //need services : _contacts, _bubbles, _profiles
+        "channels":  {
+            "start_up":true,
+        }, //need services :  
+        "admin":  {
+            "start_up":true,
+        }, //need services :  
+        "fileServer":  {
+            "start_up":true,
+        }, //need services : _fileStorage
+        "fileStorage":  {
+            "start_up":true,
+        }, //need services : _fileServer, _conversations
+        "calllog":  {
+            "start_up":true,
+        }, //need services :  _contacts, _profiles, _telephony
+        "favorites":  {
+            "start_up":true,
+        } //need services :  
+    }
  };
 
 // // Instantiate the SDK
 let rainbowSDK = new RainbowSDK(options);
 rainbowSDK.start();
+
 let guestFirstname = "James";
 let guestLastname = "Dupont";
 let language = "en-US";
@@ -111,7 +138,10 @@ router.get("/agentss", async(req,res,next) => {
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
-                res.send({agent: agent, guest: guest});
+                rainbowSDK.admin.askTokenOnBehalf(agent.email, agent.password).then((token)=>{
+                    res.send({agent: agent, guest: guest, token:token.token});
+                });
+                
                 //update agent field
                 //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
                 //    res.send(updated);
