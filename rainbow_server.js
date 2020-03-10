@@ -1,11 +1,11 @@
 const express = require('express');
 const bodyParser=require('body-parser');
-const mongoose = require('mongoose');
 const db = require('./db');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const Agent = require('./models/agent');
+const Queue = require('./models/queue');
 const router = require('./routes/api');
 
 const PORT = process.env.PORT || 3000;
@@ -64,7 +64,7 @@ let options = {
      },
      // Logs options
      logs: {
-         enableConsoleLogs: true,
+         enableConsoleLogs: false,
          enableFileLogs: false,
          "color": true,
          "level": 'debug',
@@ -92,41 +92,40 @@ let options = {
 let rainbowSDK = new RainbowSDK(options);
 rainbowSDK.start();
 rainbowSDK.events.on("rainbow_onready", () => {
-    let guestFirstname = "Jean";
-    let guestLastname = "Dupont";
+    console.log("Connected to Rainbow Cloud!");
     let language = "en-US";
-    let ttl = 86400 // active for a day
+    let ttl = 86400; // active for a day
 
-    //rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
-    // Do something when the guest has been created and added to that company
-        router.get("/agentss", async(req,res,next) => {
-            try {
-                console.log('GET received');
-                if (!req.query.category) {
-                    throw new Error('GET Request Needs Category Number Field');
-                }
-            } catch (e) {
-                console.log(e.message);
+    // Listen to GET request
+    router.get("/agentss", async(req,res,next) => {
+        try {
+            console.log('GET received');
+            if (!req.query.category) {
+                throw new Error('GET Request Needs category Number Parameter');
             }
-            rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
-                Agent.findOne({available: true, category: req.query.category},function(err,agent){
-                    if(!agent) {
-                        Queue.create(req.query).then(function(queue){
-                            res.send("You've been put in queue!");
-                        }).catch(next);
-                    } else {
-                        res.send({agent: agent, guest: guest});
-                        //update agent field
-                        //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
-                        //    res.send(updated);
-                        //});
-                    }
-                }).catch(next);
-            });
+            if (!req.query.guestFirstName) {
+                throw new Error('GET Request Needs guestFirstName String Parameter');
+            }
+            if (!req.query.guestLastName) {
+                throw new Error('GET Request Needs guestLastName String Parameter');
+            }
+        } catch (e) {
+            console.log(e.message);
+        }
+        rainbowSDK.admin.createGuestUser(req.query.guestFirstName, req.query.guestLastName, language, ttl).then((guest) => {
+            Agent.findOne({available: true, category: req.query.category},function(err,agent){
+                if(!agent) {
+                    Queue.create({guestFirstName:req.query.guestFirstName, guestLastName:req.query.guestLastName, category:req.query.category, guestId:guest.id}).then(function(queue){
+                        console.log();
+                        res.send({message:"You've been put in queue!", queue:queue});
+                    }).catch(next);
+                } else {
+                    res.send({message:"An agent is free!" ,agent: agent, guest: guest});
+                }
+            }).catch(next);
         });
-    
-    
-}).catch((err) => {
+    });
+}).catch(() => {
     // Do something in case of error
 //});
 });
