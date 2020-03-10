@@ -138,7 +138,7 @@ router.get("/agentss", async(req,res,next) => {
                     res.send("You've been put in queue!");
                 }).catch(next);
             } else {
-                rainbowSDK.admin.askTokenOnBehalf(agent.email, agent.password).then((token)=>{
+                rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                     res.send({agent: agent, guest: guest, token:token.token});
                 });
                 
