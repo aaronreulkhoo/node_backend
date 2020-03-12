@@ -139,7 +139,7 @@ router.get("/agentss", async(req,res,next) => {
                 }).catch(next);
             } else {
                 rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
-                    res.send({agent: agent, guest: guest, token:token.token});
+                    res.send({agent: agent, token:token.token});
                 });
                 
                 //update agent field
