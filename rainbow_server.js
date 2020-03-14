@@ -6,6 +6,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const Agent = require('./models/agent');
+const Queue = require('./models/queue');
 const router = require('./routes/api');
 
 const PORT = process.env.PORT || 3000;
@@ -117,7 +118,7 @@ let options = {
 // // Instantiate the SDK
 let rainbowSDK = new RainbowSDK(options);
 rainbowSDK.start();
-
+var guestToken;
 let guestFirstname = "James";
 let guestLastname = "Dupont";
 let language = "en-US";
@@ -133,21 +134,41 @@ router.get("/agentss", async(req,res,next) => {
     }
     rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
         Agent.findOne({available: true, category: req.query.category},function(err,agent){
-            if(!agent) {
-                Queue.create(req.query).then(function(queue){
-                    res.send("You've been put in queue!");
+            rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
+                guestToken = token.token;
+                if(!agent) {
+                    Queue.create({category:req.query.category, token:token.token}).then(function(queue){
+                        res.send("You've been put in queue!");
                 }).catch(next);
-            } else {
-                rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
-                    res.send({agent: agent, token:token.token});
-                });
-                
-                //update agent field
-                //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
-                //    res.send(updated);
-                //});
-            }
+                } else {
+                    res.send({agent:agent, token:token.token});
+            //update agent field
+            //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
+            //    res.send(updated);
+            //});
+                    }
+            });
         }).catch(next);
+    });
+});
+
+router.patch("/agentss/:id", async (req,res) => { // sync must catch errors
+    console.log('PATCH received');
+    Agent.findOneAndUpdate({available:false, category:req.query.category}, {$set: {'available':true}}).then(function(agent){
+        if(!agent){
+            res.send("Not find!");
+        }else{
+            Queue.findOne({category:req.query.category}).sort({created_at: 1}).exec(function(err, guestInQueue){
+                if(!guestInQueue){
+                    res.send("No guest in queue!");
+                }else{
+                    res.send(guestInQueue.token);
+                    Queue.findByIdAndRemove(guestInQueue._id, function(err, suc){
+                        console.log("Successfully Removed!");
+                    });
+                }    
+            });  
+        }
     });
 });
 
