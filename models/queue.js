@@ -9,6 +9,10 @@ const QueueSchema = new Schema({
     token: {
         type: String, 
         required: [true, "Token field required"]
+    }, 
+    marker: {
+        type: Boolean, 
+        required: [true, "Marker field required"]
     }
 }, {timestamps: true });
 
