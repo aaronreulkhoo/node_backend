@@ -150,15 +150,22 @@ router.get("/agentss", async(req,res,next) => {
 
 router.patch("/agentss", async (req,res, next) => { // sync must catch errors
     console.log('PATCH received');
-    Agent.findOneAndUpdate({rainbowId:req.query.rainbowId}, {$set:{'available':true}}).then(function(err, agent){
-        Queue.findOneAndUpdate({category:req.query.category, marker:false}, {$set: {'marker':true}}).sort({created_at: 1}).exec(function(err, guestInQueue){
+    Agent.findOne({rainbowId:req.query.rainbowId}, function(err, agent){
+        if(!agent){
+            res.send("Not find!");
+        }else{
+            Queue.findOne({category:agent.category, marker:""}).sort({created_at: 1}).exec(function(err, guestInQueue){
             if(!guestInQueue){
-                res.send("No one in queue!");
+                Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
+                    res.send("No one in queue! Agent is now available!");
+                });
             }else{
-                res.send("Marker set to true!");
+                Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId}}).then(function(err){
+                    res.send("Marker set to true!");
+                }); 
             }    
-        });  
+            }); 
+        }
+         
     }).catch(next);
 });
-
-module.exports(rainbowSDK);
