@@ -137,7 +137,7 @@ router.get("/agentss", async(req,res,next) => {
             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                 guestToken = token.token;
                 if(!agent) {
-                    Queue.create({category:req.query.category, token:token.token, marker:false}).then(function(queue){
+                    Queue.create({category:req.query.category, token:token.token, marker:"Null"}).then(function(queue){
                         res.send("You've been put in queue!");
                     }).catch(next);
                 } else {
@@ -154,7 +154,7 @@ router.patch("/agentss", async (req,res, next) => { // sync must catch errors
         if(!agent){
             res.send("Not find!");
         }else{
-            Queue.findOne({category:agent.category, marker:""}).sort({created_at: 1}).exec(function(err, guestInQueue){
+            Queue.findOne({category:agent.category, marker:"Null"}).sort({created_at: 1}).exec(function(err, guestInQueue){
             if(!guestInQueue){
                 Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
                     res.send("No one in queue! Agent is now available!");
