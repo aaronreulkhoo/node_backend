@@ -133,43 +133,32 @@ router.get("/agentss", async(req,res,next) => {
         console.log(e.message);
     }
     rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
-        Agent.findOne({available: true, category: req.query.category},function(err,agent){
+        Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':false}}, function(err,agent){
             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                 guestToken = token.token;
                 if(!agent) {
-                    Queue.create({category:req.query.category, token:token.token}).then(function(queue){
+                    Queue.create({category:req.query.category, token:token.token, marker:false}).then(function(queue){
                         res.send("You've been put in queue!");
-                }).catch(next);
+                    }).catch(next);
                 } else {
                     res.send({agent:agent, token:token.token});
-            //update agent field
-            //Agent.findByIdAndUpdate({_id:agent._id}, {available:false}).then(function(updated){
-            //    res.send(updated);
-            //});
-                    }
+                }
             });
         }).catch(next);
     });
 });
 
-router.patch("/agentss/:id", async (req,res) => { // sync must catch errors
+router.patch("/agentss", async (req,res, next) => { // sync must catch errors
     console.log('PATCH received');
-    Agent.findOneAndUpdate({available:false, category:req.query.category}, {$set: {'available':true}}).then(function(agent){
-        if(!agent){
-            res.send("Not find!");
-        }else{
-            Queue.findOne({category:req.query.category}).sort({created_at: 1}).exec(function(err, guestInQueue){
-                if(!guestInQueue){
-                    res.send("No guest in queue!");
-                }else{
-                    res.send(guestInQueue.token);
-                    Queue.findByIdAndRemove(guestInQueue._id, function(err, suc){
-                        console.log("Successfully Removed!");
-                    });
-                }    
-            });  
-        }
-    });
+    Agent.findOneAndUpdate({rainbowId:req.query.rainbowId}, {$set:{'available':true}}).then(function(err, agent){
+        Queue.findOneAndUpdate({category:req.query.category, marker:false}, {$set: {'marker':true}}).sort({created_at: 1}).exec(function(err, guestInQueue){
+            if(!guestInQueue){
+                res.send("No one in queue!");
+            }else{
+                res.send("Marker set to true!");
+            }    
+        });  
+    }).catch(next);
 });
 
 module.exports(rainbowSDK);
