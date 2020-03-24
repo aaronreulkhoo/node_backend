@@ -125,7 +125,7 @@ let language = "en-US";
 let ttl = 86400 // active for a day
 router.get("/agentss", async(req,res,next) => {
     try {
-        console.log('GET received');
+        console.log('GET Agent received');
         if (!req.query.category) {
             throw new Error('GET Request Needs Category Number Field');
         }
@@ -133,18 +133,46 @@ router.get("/agentss", async(req,res,next) => {
         console.log(e.message);
     }
     rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
-        Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':false}}, function(err,agent){
+        Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':true}}, function(err,agent){
             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                 guestToken = token.token;
                 if(!agent) {
-                    Queue.create({category:req.query.category, token:token.token, marker:"Null"}).then(function(queue){
-                        res.send({agent:null, token:null, category:queue.category});
+                    Queue.create({category:req.query.category, token:token.token, marker:"Null", agentName: "Null"}).then(function(queue){
+                        res.send({agentId:null, agentName:null, token:token.token});
                     }).catch(next);
                 } else {
-                    res.send({agent:agent, token:token.token});
+                    res.send({agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                 }
             });
         }).catch(next);
+    });
+});
+
+router.get("/queue", async(req,res,next) => {
+    try {
+        console.log('GET Queue received');
+        if (!req.query.token) {
+            throw new Error('GET Request Needs Token Field');
+        }
+    } catch (e) {
+        console.log(e.message);
+    }
+    Queue.findOne({token:req.query.token}, function(err, guestFound){
+        if(!guestFound){
+            res.send("No guest found in queue!");
+        }else{
+            if(guestFound.marker!='Null'){
+                res.send({agentId:guestFound.marker, agentName:guestFound.agentName, token:guestFound.token});
+            }else{
+                Agent.findOneAndUpdate({available: true, category: guestFound.category},{$set:{'available':true}}, function(err,agent){
+                    if(!agent) {
+                        res.send({agentId:null,agentName:null, token:token.token});
+                    } else {
+                        res.send({agentId:agent.rainbowId,agentName:agent.name, token:token.token});
+                    }
+                }).catch(next);
+            }
+        }
     });
 });
 
@@ -160,12 +188,29 @@ router.patch("/agentss", async (req,res, next) => { // sync must catch errors
                     res.send("No one in queue! Agent is now available!");
                 });
             }else{
-                Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId}}).then(function(err){
+                Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId, 'agentName':agent.name}}).then(function(err){
                     res.send("Marker set to true!");
                 }); 
             }    
             }); 
-        }
-         
+        }      
     }).catch(next);
+});
+
+router.post("/agentss", function(req,res,next){
+    console.log('POST received');
+    Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category}).then(function(agent){
+        res.send(agent);
+    }).catch(next);
+});
+
+router.delete("/queue", function(req,res,next){
+    Queue.deleteOne({token:req.body.token}).then(function(response){
+        if (response.deletedCount) {
+            res.send("Queue Number Deleted")
+        } else {
+            res.send("Queue Number Not Found")
+        }
+
+    });
 });
