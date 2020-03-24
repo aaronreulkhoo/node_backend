@@ -138,7 +138,7 @@ router.get("/agentss", async(req,res,next) => {
                 guestToken = token.token;
                 if(!agent) {
                     Queue.create({category:req.query.category, token:token.token, marker:"Null"}).then(function(queue){
-                        res.send({agent:null, token:null, category:req.query.category});
+                        res.send({agent:null, token:null, category:queue.category});
                     }).catch(next);
                 } else {
                     res.send({agent:agent, token:token.token});
