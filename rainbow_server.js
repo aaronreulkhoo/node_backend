@@ -171,6 +171,7 @@ router.get("/queue", async(req,res,next) => {
                         res.send({agentId:null,agentName:null, token:guestFound.token});
                     } else {
                         console.log("Finally get!");
+                        Queue.findByIdAndRemove({_id:guestFound._id});
                         res.send({agentId:agent.rainbowId,agentName:agent.name, token:guestFound.token});
                     }
                 }).catch(next);
