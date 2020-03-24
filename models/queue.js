@@ -13,6 +13,10 @@ const QueueSchema = new Schema({
     marker: {
         type: Boolean, 
         required: [true, "Marker field required"]
+    }, 
+    agentName: {
+        type: String, 
+        required: [true, "Agent Name field required"]
     }
 }, {timestamps: true });
 
