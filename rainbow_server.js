@@ -171,8 +171,8 @@ router.get("/queue", async(req,res,next) => {
                         res.send({agentId:null,agentName:null, token:guestFound.token});
                     } else {
                         console.log("Finally get!");
-                        Queue.findByIdAndRemove({_id:guestFound._id});
                         res.send({agentId:agent.rainbowId,agentName:agent.name, token:guestFound.token});
+                        Queue.findByIdAndRemove({_id:guestFound._id});
                     }
                 }).catch(next);
             }
@@ -187,15 +187,15 @@ router.patch("/agentss", async (req,res, next) => { // sync must catch errors
             res.send("Not find!");
         }else{
             Queue.findOne({category:agent.category, marker:"Null"}).sort({created_at: 1}).exec(function(err, guestInQueue){
-            if(!guestInQueue){
-                Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
-                    res.send("No one in queue! Agent is now available!");
-                });
-            }else{
-                Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId, 'agentName':agent.name}}).then(function(err){
-                    res.send("Marker set to true!");
-                }); 
-            }    
+                if(!guestInQueue){
+                    Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
+                        res.send("No one in queue! Agent is now available!");
+                    });
+                }else{
+                    Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId, 'agentName':agent.name}}).then(function(err){
+                        res.send("Marker set to true!");
+                    }); 
+                }    
             }); 
         }      
     }).catch(next);
