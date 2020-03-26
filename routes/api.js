@@ -2,6 +2,7 @@ const express = require('express');
 const router=express.Router();
 const Agent = require('../models/agent');
 const Queue = require('../models/queue');
+
 const RainbowSDK = require("rainbow-node-sdk");
 // Options Config for rainbow
 const options = {
@@ -153,7 +154,7 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
     try {
         console.log('PATCH: api/agents');
         if (!req.query.agentId) {
-            throw new Error("PATCH Request Needs 'AgentId' Number Parameter");
+            throw new Error("PATCH Request Needs 'AgentId' String Parameter");
         }
     } catch (e) {
         return next(e);
@@ -169,7 +170,7 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
                     }).catch(next);
                 }else{
                     Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'agentId':agent.rainbowId, 'agentName':agent.name}}).then(function(){
-                        res.send("Agent has been made reassigned");
+                        res.send("Agent has been reassigned");
                     }).catch(next);
                 }
             });
@@ -185,7 +186,15 @@ router.post("/agents", function(req,res,next){
 });
 
 router.delete("/queue", function(req,res,next){
-    Queue.deleteOne({token:req.body.token}).then(function(response){
+    try {
+        console.log('DELETE: api/queue');
+        if (!req.query.token) {
+            throw new Error("DELETE Request Needs 'token' String Parameter");
+        }
+    } catch (e) {
+        return next(e);
+    }
+    Queue.deleteOne({token:req.query.token}).then(function(response){
         if (response.deletedCount) {
             res.send("Queue Number Deleted")
         } else {
