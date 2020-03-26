@@ -7,15 +7,15 @@ const QueueSchema = new Schema({
         required: [true, "Category field required"]
     },
     token: {
-        type: String, 
+        type: String,
         required: [true, "Token field required"]
-    }, 
-    marker: {
-        type: Boolean, 
-        required: [true, "Marker field required"]
-    }, 
+    },
+    agentId: {
+        type: String,
+        required: [true, "AgentId field required"]
+    },
     agentName: {
-        type: String, 
+        type: String,
         required: [true, "Agent Name field required"]
     }
 }, {timestamps: true });
