@@ -209,7 +209,7 @@ router.post("/agentss", function(req,res,next){
 });
 
 router.delete("/queue", function(req,res,next){
-    Queue.deleteOne({token:req.body.token}).then(function(response){
+    Queue.deleteOne({token:req.query.token}).then(function(response){
         if (response.deletedCount) {
             res.send("Queue Number Deleted")
         } else {
