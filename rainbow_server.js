@@ -162,13 +162,17 @@ router.get("/queue", async(req,res,next) => {
             res.send("No guest found in queue!");
         }else{
             if(guestFound.marker!='Null'){
+                console.log("Has been set to be available!");
                 res.send({agentId:guestFound.marker, agentName:guestFound.agentName, token:guestFound.token});
             }else{
                 Agent.findOneAndUpdate({available: true, category: guestFound.category},{$set:{'available':true}}, function(err,agent){
                     if(!agent) {
-                        res.send({agentId:null,agentName:null, token:token.token});
+                        console.log("Keep trying!");
+                        res.send({agentId:null,agentName:null, token:guestFound.token});
                     } else {
-                        res.send({agentId:agent.rainbowId,agentName:agent.name, token:token.token});
+                        console.log("Finally get!");
+                        res.send({agentId:agent.rainbowId,agentName:agent.name, token:guestFound.token});
+                        Queue.findByIdAndRemove({_id:guestFound._id});
                     }
                 }).catch(next);
             }
@@ -183,15 +187,15 @@ router.patch("/agentss", async (req,res, next) => { // sync must catch errors
             res.send("Not find!");
         }else{
             Queue.findOne({category:agent.category, marker:"Null"}).sort({created_at: 1}).exec(function(err, guestInQueue){
-            if(!guestInQueue){
-                Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
-                    res.send("No one in queue! Agent is now available!");
-                });
-            }else{
-                Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId, 'agentName':agent.name}}).then(function(err){
-                    res.send("Marker set to true!");
-                }); 
-            }    
+                if(!guestInQueue){
+                    Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(err){
+                        res.send("No one in queue! Agent is now available!");
+                    });
+                }else{
+                    Queue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'marker':agent.rainbowId, 'agentName':agent.name}}).then(function(err){
+                        res.send("Marker set to true!");
+                    }); 
+                }    
             }); 
         }      
     }).catch(next);
