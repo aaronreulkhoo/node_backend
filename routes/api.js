@@ -192,10 +192,10 @@ router.patch("/review", function(req, res, next){
     
     try{
         console.log('PATCH: api/review');
-        if(!req.query.rate1){
+        if(!req.query.rating1){
             throw new Error("PATCH Request Needs 'Rate1' Number Parameter");
         }
-        if(!req.query.rate2){
+        if(!req.query.rating2){
             throw new Error("PATCH Request Needs 'Rate2' Number Parameter");
         }
         if(!req.query.agentId){
@@ -210,18 +210,26 @@ router.patch("/review", function(req, res, next){
         var newAverage2;
         if(agent.numberOfRating==0){
             newNumberOfRating = 1;
-            newAverage1 = req.query.rate1;
-            newAverage2 = req.query.rate2;
+            newAverage1 = req.query.rating1;
+            newAverage2 = req.query.rating2;
         }else{
             newNumberOfRating = agent.numberOfRating+1;
-            newAverage1 = agent.averageRating1*agent.numberOfRating/newNumberOfRating+req.query.rate1/newNumberOfRating;
-            newAverage2 = agent.averageRating2*agent.numberOfRating/newNumberOfRating+req.query.rate2/newNumberOfRating;
+            newAverage1 = agent.averageRating1*agent.numberOfRating/newNumberOfRating+req.query.rating1/newNumberOfRating;
+            newAverage2 = agent.averageRating2*agent.numberOfRating/newNumberOfRating+req.query.rating2/newNumberOfRating;
         }
-        Agent.findOneAndUpdate({_id:agent._id}, {$set:{'averageRating1': newAverage1, 'averageRating2': newAverage2, 'numberOfRating':newNumberOfRating}}).then(function(){
-            res.send("Rating Updated");
-        }).catch(next);
-    }).catch(next);
-
+        if(!req.query.email || !req.query.comment){
+            //If there is no email or comment input
+            Agent.findByIdAndUpdate(agent._id, {
+                $set:{'averageRating1': newAverage1, 'averageRating2': newAverage2, 'numberOfRating':newNumberOfRating}}).then(function(){
+                res.send("Rating Updated");
+            }).catch(next);
+        }else{
+            Agent.findByIdAndUpdate(agent._id, {
+                $push:{'feedbacks':{'email':req.query.email, 'comment':req.query.comment}},
+                $set:{'averageRating1': newAverage1, 'averageRating2': newAverage2, 'numberOfRating':newNumberOfRating}}).then(function(){
+                res.send("Rating Updated");
+            }).catch(next);
+        }
 });
 
 router.post("/agents", function(req,res,next){
