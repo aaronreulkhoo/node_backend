@@ -80,8 +80,6 @@ async function loadRainbow() {
 loadRainbow();
 
 // Variables for guest
-let guestFirstname = "James";
-let guestLastname = "Dupont";
 let language = "en-US";
 let ttl = 86400; // active for a day
 
@@ -133,7 +131,7 @@ async function createSocketServer() {
         // GET
         socket.on('getAgent', async function (data) {
             try {
-                let guest = await rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl);
+                let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
                 let agent = await Agent.findOneAndUpdate({available: true, category: data.category},{$set:{available:false}});
                 // console.log(agent);
                 let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
