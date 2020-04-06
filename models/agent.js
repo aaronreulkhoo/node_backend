@@ -29,6 +29,10 @@ const AgentSchema = new Schema({
     numberOfRating: {
         type: Number, 
         required: [true, "numberOfRating field required"]
+    },
+    feedbacks: {
+        type: Array,
+        required: [true, "Comments field required"]
     }
 });
 
