@@ -1,7 +1,14 @@
-const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const QueueSchema = new Schema({
+    guestFirstName: {
+        type: String, 
+        required: [true, "GuestFirstName field required"]
+    },
+    guestLastName: {
+        type: String, 
+        required: [true, "GuestLastName field required"]
+    },
     token: {
         type: String,
         required: [true, "Token field required"]
