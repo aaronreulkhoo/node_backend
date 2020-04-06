@@ -95,19 +95,25 @@ router.get("/agents", async(req,res,next) => {
         if (!req.query.category) {
             throw new Error("GET Request Needs 'Category' Number Parameter");
         }
+        if (!req.query.firstName) {
+            throw new Error("GET Request Needs 'FirstName' String Parameter");
+        }
+        if (!req.query.lastName) {
+            throw new Error("GET Request Needs 'LastName' String Parameter");
+        }
     } catch (e) {
         return next(e);
     }
-    rainbowSDK.admin.createGuestUser(guestFirstname, guestLastname, language, ttl).then((guest) => {
+    rainbowSDK.admin.createGuestUser(req.query.firstName, req.query.lastName, language, ttl).then((guest) => {
         Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':false}}, function(err,agent){
             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                 guestToken = token.token;
                 if(!agent) {
-                    Queue[req.query.category].create({token:token.token, agentId:"Null", agentName: "Null"}).then(function(){
-                        res.send({category: req.query.category, agentId:"Null",agentName:"Null", token:token.token});
+                    Queue[req.query.category].create({guestFirstName: req.query.firstName, guestLastName: req.query.lastName, token:token.token, agentId:"Null", agentName: "Null"}).then(function(){
+                        res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:"Null",agentName:"Null", token:token.token});
                     }).catch(next);
                 } else {
-                    res.send({category: req.query.category, agentId:agent.rainbowId,agentName:agent.name, token:token.token});
+                    res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                 }
             });
         }).catch(next);
@@ -132,10 +138,10 @@ router.get("/queue", async(req,res,next) => {
         } else{
             if(guestFound.agentId!=='Null'){ //If agent has been assigned
                 Queue[req.query.category].findOneAndDelete({token:req.query.token}).then(function (guestDeleted) {
-                    res.send({category: req.query.category, agentId:guestDeleted.agentId, agentName:guestDeleted.agentName, token:guestDeleted.token});
+                    res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:guestDeleted.agentId, agentName:guestDeleted.agentName, token:guestDeleted.token});
                 }).catch(next)
             }else{
-                res.send({category: req.query.category, agentId:guestFound.agentId, agentName:guestFound.agentName, token:guestFound.token});
+                res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:guestFound.agentId, agentName:guestFound.agentName, token:guestFound.token});
                 // Agent.findOneAndUpdate({available: true, category: guestFound.category},{$set:{'available':true}}, function(err,agent){
                 //     if(!agent) {
                 //         console.log("Keep trying!");
@@ -180,6 +186,42 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
             });
         }
     }).catch(next);
+});
+
+router.patch("/review", function(req, res, next){
+    
+    try{
+        console.log('PATCH: api/review');
+        if(!req.query.rate1){
+            throw new Error("PATCH Request Needs 'Rate1' Number Parameter");
+        }
+        if(!req.query.rate2){
+            throw new Error("PATCH Request Needs 'Rate2' Number Parameter");
+        }
+        if(!req.query.agentId){
+            throw new Error("PATCH Request Needs 'AgentId' String Parameter")
+        }
+    }catch(e){
+            return next(e);
+    }
+    Agent.findOne({rainbowId: req.query.agentId}).then(function(agent){
+        var newNumberOfRating;
+        var newAverage1;
+        var newAverage2;
+        if(agent.numberOfRating==0){
+            newNumberOfRating = 1;
+            newAverage1 = req.query.rate1;
+            newAverage2 = req.query.rate2;
+        }else{
+            newNumberOfRating = agent.numberOfRating+1;
+            newAverage1 = agent.averageRating1*agent.numberOfRating/newNumberOfRating+req.query.rate1/newNumberOfRating;
+            newAverage2 = agent.averageRating2*agent.numberOfRating/newNumberOfRating+req.query.rate2/newNumberOfRating;
+        }
+        Agent.findOneAndUpdate({_id:agent._id}, {$set:{'averageRating1': newAverage1, 'averageRating2': newAverage2, 'numberOfRating':newNumberOfRating}}).then(function(){
+            res.send("Rating Updated");
+        }).catch(next);
+    }).catch(next);
+
 });
 
 router.post("/agents", function(req,res,next){
