@@ -103,7 +103,7 @@ router.get("/agents", async(req,res,next) => {
         if (!req.query.lastName) {
             throw new Error("GET Request Needs 'LastName' String Parameter");
         }
-        if(req.query.category>4 && req.query.category<0){
+        if(req.query.category>4 || req.query.category<0){
             throw new Error("'Category' Exceeds Threshold Value");
         }
     } catch (e) {
@@ -139,7 +139,7 @@ router.get("/queue", async(req,res,next) => {
         if (!req.query.category) {
             throw new Error("Get Request Needs 'Category' Number Parameter");
         }
-        if (req.query.category>4 && req.query.category<0) {
+        if (req.query.category>4 || req.query.category<0) {
             throw new Error("'Category' Exceeds Threshold Value");
          }
     } catch (e) {
