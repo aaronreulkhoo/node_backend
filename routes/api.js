@@ -89,8 +89,10 @@ let guestLastname = "Dupont";
 let language = "en-US";
 let ttl = 86400; // active for a day
 
+//First GET function
 router.get("/agents", async(req,res,next) => {
     try {
+        //Check if neccessary inputs are received
         console.log('GET: api/agents');
         if (!req.query.category) {
             throw new Error("GET Request Needs 'Category' Number Parameter");
@@ -101,18 +103,25 @@ router.get("/agents", async(req,res,next) => {
         if (!req.query.lastName) {
             throw new Error("GET Request Needs 'LastName' String Parameter");
         }
+        if(req.query.category>4 && req.query.category<0){
+            throw new Error("'Category' Exceeds Threshold Value");
+        }
     } catch (e) {
         return next(e);
     }
+    //Create Guest With Name
     rainbowSDK.admin.createGuestUser(req.query.firstName, req.query.lastName, language, ttl).then((guest) => {
+        //Find any agent available
         Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':false}}, function(err,agent){
             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
                 guestToken = token.token;
                 if(!agent) {
+                    //No available agent, guest pushed into queue
                     Queue[req.query.category].create({guestFirstName: req.query.firstName, guestLastName: req.query.lastName, token:token.token, agentId:"Null", agentName: "Null"}).then(function(){
                         res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:"Null",agentName:"Null", token:token.token});
                     }).catch(next);
                 } else {
+                    //Agent available, ready to make connection
                     res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                 }
             });
@@ -122,6 +131,7 @@ router.get("/agents", async(req,res,next) => {
 
 router.get("/queue", async(req,res,next) => {
     try {
+        //Check if neccessary inputs are received
         console.log('GET: api/queue');
         if (!req.query.token) {
             throw new Error("GET Request Needs 'Token' String Parameter");
@@ -129,6 +139,9 @@ router.get("/queue", async(req,res,next) => {
         if (!req.query.category) {
             throw new Error("Get Request Needs 'Category' Number Parameter");
         }
+        if (req.query.category>4 && req.query.category<0) {
+            throw new Error("'Category' Exceeds Threshold Value");
+         }
     } catch (e) {
         return next(e);
     }
@@ -160,6 +173,7 @@ router.get("/queue", async(req,res,next) => {
 
 router.patch("/agents", async (req,res, next) => { // sync must catch errors
     try {
+        //Check if neccessary inputs are received
         console.log('PATCH: api/agents');
         if (!req.query.agentId) {
             throw new Error("PATCH Request Needs 'AgentId' Number Parameter");
@@ -171,13 +185,14 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
         if(!agent){
             throw new Error('Invalid Agent ID');
         }else{
+            //Find the eariest guest that is not assigned to an agent
             Queue[agent.category].findOne({agentId:"Null"}).sort({created_at: 1}).exec(function(err, guestInQueue){
-                if(!guestInQueue){
+                if(!guestInQueue){//If no such guest found in the queue, the agent is available
                     Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(){
                         console.log("Agent has been made available");
                         res.send("Agent has been made available");
                     }).catch(next);
-                }else{
+                }else{//If some guest found, assign the agent to the guest
                     Queue[agent.category].findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'agentId':agent.rainbowId, 'agentName':agent.name}}).then(function(){
                         console.log("Agent has been reassigned");
                         res.send("Agent has been reassigned");
@@ -191,20 +206,22 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
 router.patch("/review", function(req, res, next){
     
     try{
+        //Check if neccessary inputs are received
         console.log('PATCH: api/review');
         if(!req.query.rating1){
-            throw new Error("PATCH Request Needs 'Rate1' Number Parameter");
+            throw new Error("PATCH Request Needs 'Rating1' Number Parameter");
         }
         if(!req.query.rating2){
-            throw new Error("PATCH Request Needs 'Rate2' Number Parameter");
+            throw new Error("PATCH Request Needs 'Rating2' Number Parameter");
         }
         if(!req.query.agentId){
-            throw new Error("PATCH Request Needs 'AgentId' String Parameter")
+            throw new Error("PATCH Request Needs 'AgentId' String Parameter");
         }
     }catch(e){
             return next(e);
     }
     Agent.findOne({rainbowId: req.query.agentId}).then(function(agent){
+        //Update the average rating values
         var newNumberOfRating;
         var newAverage1;
         var newAverage2;
@@ -217,8 +234,8 @@ router.patch("/review", function(req, res, next){
             newAverage1 = agent.averageRating1*agent.numberOfRating/newNumberOfRating+req.query.rating1/newNumberOfRating;
             newAverage2 = agent.averageRating2*agent.numberOfRating/newNumberOfRating+req.query.rating2/newNumberOfRating;
         }
+        //If comment found, insert into feedbacks array
         if(!req.query.email || !req.query.comment){
-            //If there is no email or comment input
             Agent.findByIdAndUpdate(agent._id, {
                 $set:{'averageRating1': newAverage1, 'averageRating2': newAverage2, 'numberOfRating':newNumberOfRating}}).then(function(){
                 res.send("Rating Updated");
@@ -230,17 +247,23 @@ router.patch("/review", function(req, res, next){
                 res.send("Rating Updated");
             }).catch(next);
         }
+        
+    }).catch(next);
+
 });
 
 router.post("/agents", function(req,res,next){
     console.log('POST received');
-    Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category}).then(function(agent){
+    Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, 
+        category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
+    feedbacks:new Array}).then(function(agent){
         res.send(agent);
     }).catch(next);
 });
 
 router.delete("/queue", function(req,res,next){
     try {
+        //Check if neccessary inputs are received
         console.log('DELETE: api/queue');
         if (!req.query.token) {
             throw new Error("DELETE Request Needs 'token' String Parameter");
