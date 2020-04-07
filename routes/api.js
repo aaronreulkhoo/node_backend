@@ -217,6 +217,12 @@ router.patch("/review", function(req, res, next){
         if(!req.query.agentId){
             throw new Error("PATCH Request Needs 'AgentId' String Parameter");
         }
+        if(req.query.rating1<0 || req.query.rating1>5){
+            throw new Error("'Rating1' Exceeds Threshold Value");
+        }
+        if(req.query.rating2<0 || req.query.rating2>5){
+            throw new Error("'Rating2' Exceeds Threshold Value");
+        }
     }catch(e){
             return next(e);
     }
