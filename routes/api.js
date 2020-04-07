@@ -84,8 +84,6 @@ async function loadRainbow() {
 loadRainbow();
 
 var guestToken;
-let guestFirstname = "James";
-let guestLastname = "Dupont";
 let language = "en-US";
 let ttl = 86400; // active for a day
 
@@ -142,16 +140,6 @@ router.get("/queue", async(req,res,next) => {
                 }).catch(next)
             }else{
                 res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:guestFound.agentId, agentName:guestFound.agentName, token:guestFound.token});
-                // Agent.findOneAndUpdate({available: true, category: guestFound.category},{$set:{'available':true}}, function(err,agent){
-                //     if(!agent) {
-                //         console.log("Keep trying!");
-                //         res.send({agentId:null,agentName:null, token:guestFound.token});
-                //     } else {
-                //         console.log("Finally get!");
-                //         res.send({agentId:agent.rainbowId,agentName:agent.name, token:guestFound.token});
-                //         Queue.findByIdAndRemove({_id:guestFound._id});
-                //     }
-                // }).catch(next);
             }
         }
     }).catch(next);
@@ -189,7 +177,7 @@ router.patch("/agents", async (req,res, next) => { // sync must catch errors
 });
 
 router.patch("/review", function(req, res, next){
-    
+
     try{
         console.log('PATCH: api/review');
         if(!req.query.rating1){

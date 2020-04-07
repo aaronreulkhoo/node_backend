@@ -30,8 +30,6 @@ const Queue2 = mongoose.model('queue2', QueueSchema);
 const Queue3 = mongoose.model('queue3', QueueSchema);
 const Queue4 = mongoose.model('queue4', QueueSchema);
 
-
-
 module.exports = {
     0 : Queue0,
     1 : Queue1,

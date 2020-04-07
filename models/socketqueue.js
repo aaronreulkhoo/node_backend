@@ -2,10 +2,6 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const SocketQueueSchema = new Schema({
-    category: {
-        type: Number,
-        required: [true, "Category field required"]
-    },
     token: {
         type: String,
         required: [true, "Token field required"]
@@ -24,6 +20,16 @@ const SocketQueueSchema = new Schema({
     }
 }, {timestamps: true });
 
-const SocketQueue = mongoose.model('queue', SocketQueueSchema);
+const SocketQueue0 = mongoose.model('queue0', SocketQueueSchema);
+const SocketQueue1 = mongoose.model('queue1', SocketQueueSchema);
+const SocketQueue2 = mongoose.model('queue2', SocketQueueSchema);
+const SocketQueue3 = mongoose.model('queue3', SocketQueueSchema);
+const SocketQueue4 = mongoose.model('queue4', SocketQueueSchema);
 
-module.exports = SocketQueue;
+module.exports = {
+    0 : SocketQueue0,
+    1 : SocketQueue1,
+    2 : SocketQueue2,
+    3 : SocketQueue3,
+    4 : SocketQueue4
+};

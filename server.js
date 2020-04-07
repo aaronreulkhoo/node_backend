@@ -120,7 +120,7 @@ async function createSocketServer() {
     }); // serve simple html
 
     //Handle Connections
-    io.on('connection', function (socket) {
+    io.sockets.on('connection', function (socket) {
         // HANDSHAKE
         console.log(socket.id+" connected");
         console.log(Object.keys(io.engine.clients));
@@ -131,16 +131,17 @@ async function createSocketServer() {
         // GET
         socket.on('getAgent', async function (data) {
             try {
+                socket['category']=data.category;
                 let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
                 let agent = await Agent.findOneAndUpdate({available: true, category: data.category},{$set:{available:false}});
                 // console.log(agent);
                 let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
                 if(agent) {
-                    SocketQueue.create({category:data.category, token:token.token, socketId:socket.id, agentId:agent.rainbowId,agentName:agent.name}).then(() => {
+                    SocketQueue[data.category].create({token:token.token, socketId:socket.id, agentId:agent.rainbowId,agentName:agent.name}).then(() => {
                         socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                     }).catch();
                 } else {
-                    SocketQueue.create({category:data.category, token:token.token, socketId:socket.id, agentId:"Null", agentName: "Null"})
+                    SocketQueue[data.category].create({ token:token.token, socketId:socket.id, agentId:"Null", agentName: "Null"})
                 }
             } catch (e) {
                 console.log(e.message);
@@ -152,14 +153,15 @@ async function createSocketServer() {
             console.log(socket.id+" disconnected");
             console.log(Object.keys(io.engine.clients));
             try {
-                let guestLeftQueue= await SocketQueue.findOneAndDelete({socketId:socket.id});
-                // console.log(guestLeftQueue);
+                let guestLeftQueue= await SocketQueue[socket['category']].findOneAndDelete({socketId:socket.id});
+                console.log(guestLeftQueue);
                 if (guestLeftQueue) {
                     console.log("Queue Number Deleted");
                     if (guestLeftQueue.agentId!=="Null") {
-                        let guestInQueue = await SocketQueue.findOne({category:guestLeftQueue.category, agentId:"Null"}).sort({created_at: 1});
+                        let guestInQueue = await SocketQueue[socket['category']].findOne({agentId:"Null"}).sort({created_at: 1});
+                        console.log(guestInQueue);
                         if(guestInQueue){
-                            SocketQueue.findByIdAndUpdate({_id:guestInQueue._id}, {$set:{agentId: guestLeftQueue.agentId, agentName:guestLeftQueue.agentName}}).then(() => {
+                            SocketQueue[socket['category']].findByIdAndUpdate({_id:guestInQueue._id}, {$set:{agentId: guestLeftQueue.agentId, agentName:guestLeftQueue.agentName}}).then(() => {
                                 console.log("And Agent Reassigned");
                             }).catch();
                             io.to(`${guestInQueue.socketId}`).emit("getAgentSuccess",{agentId:guestLeftQueue.agentId,agentName:guestLeftQueue.agentName, token:guestInQueue.token});
@@ -180,7 +182,6 @@ async function createSocketServer() {
         });
 
     })
-
 }
 
 createSocketServer();
