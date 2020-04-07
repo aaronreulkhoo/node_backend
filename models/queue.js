@@ -2,9 +2,13 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const QueueSchema = new Schema({
-    category: {
-        type: Number,
-        required: [true, "Category field required"]
+    guestFirstName: {
+        type: String,
+        required: [true, "GuestFirstName field required"]
+    },
+    guestLastName: {
+        type: String,
+        required: [true, "GuestLastName field required"]
     },
     token: {
         type: String,
@@ -20,6 +24,18 @@ const QueueSchema = new Schema({
     }
 }, {timestamps: true });
 
-const Queue = mongoose.model('queue', QueueSchema);
+const Queue0 = mongoose.model('queue0', QueueSchema);
+const Queue1 = mongoose.model('queue1', QueueSchema);
+const Queue2 = mongoose.model('queue2', QueueSchema);
+const Queue3 = mongoose.model('queue3', QueueSchema);
+const Queue4 = mongoose.model('queue4', QueueSchema);
 
-module.exports = Queue;
+
+
+module.exports = {
+    0 : Queue0,
+    1 : Queue1,
+    2 : Queue2,
+    3 : Queue3,
+    4 : Queue4
+};

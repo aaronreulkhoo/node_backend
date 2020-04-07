@@ -16,7 +16,7 @@ async function createServer() {
     }
 
     app.use(cors());
-    app.use(express.static('public_api')); // serve simple html
+    app.use(express.static('public')); // serve simple html
     app.use(bodyParser.json()); //middleware
     app.use('/api', require('./routes/api')); // route setup
     app.use(function(err, req, res, next) { //error handling
