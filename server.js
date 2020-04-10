@@ -108,16 +108,26 @@ async function createSocketServer() {
         console.log(`Socket.io listening to Port ${SOCKETPORT}...`);
     });
 
-    app.post("/agents", function(req,res,next){
+    app.post("/agents", async function(req,res){ // api endpoint to put agents into database, assigns to guest if waiting
         console.log('POST received');
-        Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category, clientSocketId: "Null"}).then(function(agent){
+        await Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category}).then(function(agent){
             res.send(agent);
-        }).catch(next);
+        }).catch();
+        let guestInQueue = await SocketQueue[req.query.category].findOne({agentId:"Null"}).sort({created_at: 1});
+        if (guestInQueue) {
+            io.to(`${guestInQueue.socketId}`).emit("getAgentSuccess",{agentId:req.query.rainbowId,agentName:req.query.name, token:guestInQueue.token});
+        }
     });
 
     app.get('/', function (req, res) {
         res.sendFile(__dirname + '/public/index.html');
     }); // serve simple html
+
+    app.get("/admin", async function (req,res) {
+        await Agent.find().then(function (data) {
+            res.send(data);
+        })
+    });
 
     //Handle Connections
     io.sockets.on('connection', function (socket) {
