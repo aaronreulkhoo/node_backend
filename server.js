@@ -89,10 +89,12 @@ const db = require('./db');
 const Agent = require('./models/agent');
 const SocketQueue = require('./models/socketqueue');
 const SOCKETPORT = process.env.PORT || 4000;
+const cors = require('cors');
 
 
 async function createSocketServer() {
     const app = require('express')();
+    app.use(cors());
     const server = require('http').Server(app);
     const io = require('socket.io')(server);
 
