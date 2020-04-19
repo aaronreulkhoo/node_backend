@@ -79,12 +79,11 @@ async function loadRainbow() {
 
 loadRainbow();
 
-// Variables for guest
+// Variables for Rainbow guest account creation
 let language = "en-US";
 let ttl = 86400; // active for a day
 
 
-/*-----------------------Setting up Server*/
 const db = require('./db');
 const Agent = require('./models/agent');
 const SocketQueue = require('./models/socketqueue');
@@ -92,13 +91,16 @@ const SOCKETPORT = process.env.PORT || 4000;
 const cors = require('cors');
 
 
+/*
+This function creates an Express server which runs the socket.io port.
+*/
 async function createSocketServer() {
     const app = require('express')();
     app.use(cors());
     const server = require('http').Server(app);
     const io = require('socket.io')(server);
 
-    // Connect to Mongo
+    // Create connection to MongoDB
     try {
         await db.connect();
     } catch (error) {
@@ -106,90 +108,110 @@ async function createSocketServer() {
         process.exit(1);
     }
 
+    // Opens the port for the Express app to listen to
     server.listen(SOCKETPORT, ()=>{
         console.log(`Socket.io listening to Port ${SOCKETPORT}...`);
     });
 
-    app.post("/agents", async function(req,res){ // api endpoint to put agents into database, assigns to guest if waiting
+
+    /*
+    This creates a POST API endpoint for agents to be put inside the database manually.
+    */
+    app.post("/agents", async function(req,res){
         console.log('POST received');
         await Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category}).then(function(agent){
             res.send(agent);
         }).catch();
-        let guestInQueue = await SocketQueue[req.query.category].findOne({agentId:"Null"}).sort({created_at: 1});
-        if (guestInQueue) {
-            io.to(`${guestInQueue.socketId}`).emit("getAgentSuccess",{agentId:req.query.rainbowId,agentName:req.query.name, token:guestInQueue.token});
-        }
     });
 
+
+    /*
+    This serves a basic HTML file which can be used to check if the server is up.
+    */
     app.get('/', function (req, res) {
         res.sendFile(__dirname + '/public/index.html');
-    }); // serve simple html
-
-    app.get("/admin", async function (req,res) {
-        await Agent.find().then(function (data) {
-            res.send(data);
-        })
     });
 
-    //Handle Connections
+
+    /*
+    This method is where all socket event handlers and listeners are mounted.
+    The namespace of the socket variable is treated with respect to each individual socket variable,
+    hence all sockets will have the same handlers and procedures attached.
+    */
     io.sockets.on('connection', function (socket) {
-        // HANDSHAKE
-        console.log(socket.id+" connected");
+        /*
+        This code automatically fires off the 'handshake' event which sends the socket id to the client.
+        */
+        console.log(socket.id+" Connected");
         console.log(Object.keys(io.engine.clients));
         socket.emit('handshake', {
             socketId: socket.id
         });
 
-        // GET
+        /*
+        This is the event handler for the 'getAgent' event emitted by the client. When triggered:
+        1) Creates the queue object and stores the category associated with it
+        2) Creates the guest account using the incoming data
+        3) Attempts to find and update an agent which is available
+        4) Creates the queue object for the incoming socket, with or without the agent assigned.
+        5) If an agent is available, the 'getAgentSuccess' event is fired with the agent's rainbowID, name, and guest token attached
+        */
         socket.on('getAgent', async function (data) {
             try {
                 socket['category']=data.category;
+                let queue = await SocketQueue[data.category].create({ token: "Null", socketId:socket.id, agentId:"Null", agentName: "Null"});
+                console.log("Queue Number Created");
                 let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
-                let agent = await Agent.findOneAndUpdate({available: true, category: data.category},{$set:{available:false}});
-                // console.log(agent);
                 let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
+                let agent = await Agent.findOneAndUpdate({available: true, category: data.category},{$set:{available:false}});
                 if(agent) {
-                    SocketQueue[data.category].create({token:token.token, socketId:socket.id, agentId:agent.rainbowId,agentName:agent.name}).then(() => {
-                        socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
-                    }).catch();
+                    await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token, agentId: agent.rainbowId, agentName:agent.name}});
+                    socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
+                    console.log("And Agent Was Assigned");
                 } else {
-                    SocketQueue[data.category].create({ token:token.token, socketId:socket.id, agentId:"Null", agentName: "Null"})
+                    await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token}});
+                    console.log("But No Agent Was Available");
                 }
             } catch (e) {
                 console.log(e.message);
             }
         });
 
-        // LEAVING
+        /*
+        This is the event handler for the 'disconnect' event that is automatically triggered on a socket close.:
+        1) Retrieves and deletes the associated queue object in the database
+        2) If an agent was assigned, it searches for the earliest queue object by time in that same category without an agent
+        3) If there is a person waiting, it reassigns the agent to that queue object and emits the 'getAgentSuccess' event to that socket,
+           otherwise, it makes the agent available.
+        */
         socket.on('disconnect', async function () {
-            console.log(socket.id+" disconnected");
-            console.log(Object.keys(io.engine.clients));
             try {
+                console.log(socket.id+" Disconnected");
                 let guestLeftQueue= await SocketQueue[socket['category']].findOneAndDelete({socketId:socket.id});
-                console.log(guestLeftQueue);
                 if (guestLeftQueue) {
                     console.log("Queue Number Deleted");
-                    if (guestLeftQueue.agentId!=="Null") {
-                        let guestInQueue = await SocketQueue[socket['category']].findOne({agentId:"Null"}).sort({created_at: 1});
-                        console.log(guestInQueue);
-                        if(guestInQueue){
-                            SocketQueue[socket['category']].findByIdAndUpdate({_id:guestInQueue._id}, {$set:{agentId: guestLeftQueue.agentId, agentName:guestLeftQueue.agentName}}).then(() => {
-                                console.log("And Agent Reassigned");
-                            }).catch();
-                            io.to(`${guestInQueue.socketId}`).emit("getAgentSuccess",{agentId:guestLeftQueue.agentId,agentName:guestLeftQueue.agentName, token:guestInQueue.token});
-                        } else {
-                            Agent.findOneAndUpdate({rainbowId:guestLeftQueue.agentId}, {$set:{available:true}}).then(() => {
-                                console.log("And Agent Made Available");
-                            }).catch();
-                        }
+                } else {
+                    console.log("Error Deleting Queue Number");
+                    return;
+                }
+
+                if (guestLeftQueue.agentId!=="Null") {
+                    let nextInQueue = await SocketQueue[socket['category']].findOne({agentId:"Null"}).sort({created_at: 1});
+                    if(nextInQueue){
+                        await SocketQueue[socket['category']].findByIdAndUpdate({_id:nextInQueue._id}, {$set:{agentId: guestLeftQueue.agentId, agentName:guestLeftQueue.agentName}});
+                        io.to(`${nextInQueue.socketId}`).emit("getAgentSuccess",{agentId:guestLeftQueue.agentId,agentName:guestLeftQueue.agentName, token:nextInQueue.token});
+                        console.log("And Agent Was Reassigned");
                     } else {
-                        console.log("But No Agent Assigned");
+                        await Agent.findOneAndUpdate({rainbowId:guestLeftQueue.agentId},{$set:{available:true}});
+                        console.log("And Agent Made Available");
                     }
                 } else {
-                    console.log("Error Deleting Queue Number")
+                    console.log("But No Agent Was Assigned");
                 }
             } catch (e) {
                 console.log(e.message)
+            } finally {
+                console.log(Object.keys(io.engine.clients));
             }
         });
 
