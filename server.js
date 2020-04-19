@@ -67,6 +67,10 @@ const options = {
 // Rainbow SDK Object
 const rainbowSDK = new RainbowSDK(options);
 
+
+/*
+This function loads the Rainbow SDK object.
+*/
 async function loadRainbow() {
     try {
         await rainbowSDK.start();
@@ -76,8 +80,8 @@ async function loadRainbow() {
         process.exit(1);
     }
 }
-
 loadRainbow();
+
 
 // Variables for Rainbow guest account creation
 let language = "en-US";
@@ -92,7 +96,7 @@ const cors = require('cors');
 
 
 /*
-This function creates an Express server which runs the socket.io port.
+This function creates the Express server which serves as the port for web sockets.
 */
 async function createSocketServer() {
     const app = require('express')();
@@ -129,7 +133,7 @@ async function createSocketServer() {
     This serves a basic HTML file which can be used to check if the server is up.
     */
     app.get('/', function (req, res) {
-        res.sendFile(__dirname + '/public/index.html');
+        res.sendFile(__dirname + '/socket_public/index.html');
     });
 
 
@@ -150,11 +154,11 @@ async function createSocketServer() {
 
         /*
         This is the event handler for the 'getAgent' event emitted by the client. When triggered:
-        1) Creates the queue object and stores the category associated with it
-        2) Creates the guest account using the incoming data
-        3) Attempts to find and update an agent which is available
+        1) Creates the queue object and stores the category associated with it.
+        2) Creates the guest account using the incoming data.
+        3) Attempts to find and update an agent which is available.
         4) Creates the queue object for the incoming socket, with or without the agent assigned.
-        5) If an agent is available, the 'getAgentSuccess' event is fired with the agent's rainbowID, name, and guest token attached
+        5) If an agent is available, the 'getAgentSuccess' event is fired with the agent's rainbowID, name, and guest token attached.
         */
         socket.on('getAgent', async function (data) {
             try {
@@ -178,9 +182,9 @@ async function createSocketServer() {
         });
 
         /*
-        This is the event handler for the 'disconnect' event that is automatically triggered on a socket close.:
-        1) Retrieves and deletes the associated queue object in the database
-        2) If an agent was assigned, it searches for the earliest queue object by time in that same category without an agent
+        This is the event handler for the 'disconnect' event that is automatically triggered on a socket close. When triggered:
+        1) Retrieves and deletes the associated queue object in the database.
+        2) If an agent was assigned, it searches for the earliest queue object by time in that same category without an agent.
         3) If there is a person waiting, it reassigns the agent to that queue object and emits the 'getAgentSuccess' event to that socket,
            otherwise, it makes the agent available.
         */

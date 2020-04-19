@@ -5,7 +5,9 @@ const cors = require('cors');
 
 const PORT = process.env.PORT || 3000;
 
-/*-----------------------Setting up Express*/
+/*
+This function creates the Express server which serves as the RESTful API endpoint.
+*/
 async function createServer() {
     const app = express();
     try {
@@ -19,7 +21,11 @@ async function createServer() {
     app.use(express.static('public')); // serve simple html
     app.use(bodyParser.json()); //middleware
     app.use('/api', require('./routes/api')); // route setup
-    app.use(function(err, req, res, next) { //error handling
+
+    /*
+    This middleware function standardises the error response to a 422 Unprocessable Entity status, and return the specific error message.
+    */
+    app.use(function(err, req, res, next) {
         console.log(err.message);
         res.status(422).send({error: err.message})
     });
@@ -29,4 +35,4 @@ async function createServer() {
         console.log(`Server listening to Port ${PORT}...`);
     });
 }
-// createServer();
+createServer();
