@@ -130,6 +130,16 @@ async function createSocketServer() {
 
 
     /*
+    This creates a GET API endpoint for the Admin dashboard to retrieve agent statuses.
+    */
+    app.get("/admin", async function (req,res) {
+        await Agent.find().then(function (data) {
+            res.send(data);
+        })
+    });
+
+
+    /*
     This serves a basic HTML file which can be used to check if the server is up.
     */
     app.get('/', function (req, res) {
