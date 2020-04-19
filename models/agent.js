@@ -26,6 +26,10 @@ const AgentSchema = new Schema({
         type: Number, 
         required: [true, "AverageRating2 field required"]
     },
+    averageRating3: {
+        type: Number, 
+        required: [true, "AverageRating3 field required"]
+    },
     numberOfRating: {
         type: Number, 
         required: [true, "numberOfRating field required"]
