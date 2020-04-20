@@ -85,7 +85,7 @@ loadRainbow();
 
 // Variables for Rainbow guest account creation
 let language = "en-US";
-let ttl = 86400; // active for a day
+let ttl = 86400; // expires after a day
 
 
 const db = require('./db');
@@ -99,6 +99,7 @@ const cors = require('cors');
 This function creates the Express server which serves as the port for web sockets.
 */
 async function createSocketServer() {
+    const jwt = require('jsonwebtoken');
     const app = require('express')();
     app.use(cors());
     const server = require('http').Server(app);
@@ -119,22 +120,70 @@ async function createSocketServer() {
 
 
     /*
-    This creates a POST API endpoint for agents to be put inside the database manually.
+    This creates a GET API endpoint which simulates a JSON web token being passed back post-authentication.
+    This web token has a default expiry time of 2 hours (requiring another sign-in).
     */
-    app.post("/agents", async function(req,res){
-        console.log('POST received');
-        await Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, category:req.query.category}).then(function(agent){
-            res.send(agent);
-        }).catch();
+    app.get("/login", async function (req,res) {
+        const adminDetails = {adminName:"someAdmin"};
+        console.log("An Admin Has Logged In");
+        await jwt.sign({adminDetails: adminDetails},"serverKey",(err, auth) => {res.json({
+                auth:auth
+            });
+        })
+    });
+
+    /*
+    This middleware function parses the 'authorization' header for previously generated JSON web tokens for protected API endpoints.
+    This header is not directly accessible by end users.
+    If not provided or invalid, it responds with a 401 Unauthorised status response.
+    */
+    function checkAuth(req,res,next) {
+        const bearerHeader = req.headers['authorization'];
+        if (typeof bearerHeader !=="undefined"){
+            const bearer = bearerHeader.split(' ');
+            req.auth=bearer[1];
+            next()
+        } else {
+            res.sendStatus(401)
+        }
+    }
+
+
+    /*
+    This creates a POST API endpoint for agents to be put inside the queueing database manually.
+    >>> This is a protected endpoint.
+    */
+    app.post("/agents", checkAuth, function(req,res) {
+        jwt.verify(req.auth, "serverKey", (err, authData) => {
+            if (err) {
+                res.sendStatus(401)
+            } else {
+                Agent.create({
+                    name: req.query.name,
+                    rainbowId: req.query.rainbowId,
+                    available: true,
+                    category: req.query.category
+                }).then((agent) => {
+                    res.send(agent);
+                })
+            }
+        })
     });
 
 
     /*
     This creates a GET API endpoint for the Admin dashboard to retrieve agent statuses.
+    >>> This is a protected endpoint.
     */
-    app.get("/admin", async function (req,res) {
-        await Agent.find().then(function (data) {
-            res.send(data);
+    app.get("/admin", checkAuth, function (req,res) {
+        jwt.verify(req.auth,"serverKey", (err,authData) => {
+            if (err) {
+                res.sendStatus(401)
+            } else {
+                Agent.find().then((agents) => {
+                    res.send(agents);
+                })
+            }
         })
     });
 
@@ -148,6 +197,26 @@ async function createSocketServer() {
 
 
     /*
+    This middleware function screens out incoming socket connections without a valid application signature preventing spam connections.
+    If not provided or invalid, it rejects the connection.
+    */
+    const socketKey= "BBO5e7IVtK9TeSAQ3RTYGsQOWOZ0QAe8k9jbvomydoOUEjK1lwTLIkK4J3yu";
+    io.use(function(socket, next){
+        if (socket.handshake.query && socket.handshake.query.key){
+            if (socket.handshake.query.key===socketKey) {
+                next();
+            } else {
+                console.log("Authentication Failed, Connection Rejected");
+                next(new Error('Authentication error'));
+            }
+        } else {
+            console.log(", Connection Rejected");
+            next(new Error('Authentication error'));
+        }
+    });
+
+
+    /*
     This method is where all socket event handlers and listeners are mounted.
     The namespace of the socket variable is treated with respect to each individual socket variable,
     hence all sockets will have the same handlers and procedures attached.
@@ -155,6 +224,7 @@ async function createSocketServer() {
     io.sockets.on('connection', function (socket) {
         /*
         This code automatically fires off the 'handshake' event which sends the socket id to the client.
+        This signifies that the application connecting has been verified.
         */
         console.log(socket.id+" Connected");
         console.log(Object.keys(io.engine.clients));
