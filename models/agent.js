@@ -11,7 +11,11 @@ const AgentSchema = new Schema({
         required: [true, "Rainbow ID field required"]
     },
     available: {
-        type: Boolean,
+        type: Number,
+        required: [true, "Availability field required"]
+    },
+    working: {
+        type: Number,
         required: [true, "Availability field required"]
     },
     category: {
@@ -23,15 +27,15 @@ const AgentSchema = new Schema({
         required: [true, "AverageRating1 field required"]
     },
     averageRating2: {
-        type: Number, 
+        type: Number,
         required: [true, "AverageRating2 field required"]
     },
     averageRating3: {
-        type: Number, 
+        type: Number,
         required: [true, "AverageRating3 field required"]
     },
     numberOfRating: {
-        type: Number, 
+        type: Number,
         required: [true, "numberOfRating field required"]
     },
     feedbacks: {

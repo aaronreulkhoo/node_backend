@@ -80,7 +80,7 @@ async function loadRainbow() {
         process.exit(1);
     }
 }
-loadRainbow();
+// loadRainbow();
 
 
 // Variables for Rainbow guest account creation
@@ -170,9 +170,31 @@ async function createSocketServer() {
         })
     });
 
+    /*
+    This creates a PATCH API endpoint for agents' working status to be toggled.
+    >>> This is a protected endpoint.
+    */
+    app.patch("/admin", checkAuth, function(req,res) {
+        jwt.verify(req.auth, "serverKey", (err, authData) => {
+            if (err) {
+                res.sendStatus(401)
+            } else {
+                if(!req.query.rainbowId){
+                    res.sendStatus(400);
+                } else {
+                    console.log(req.query.rainbowId);
+                    Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {working: {xor: 1}}})
+                        .then((agent) => {
+                        res.send(agent);
+                    })
+                }
+            }
+        })
+    });
+
 
     /*
-    This creates a GET API endpoint for the Admin dashboard to retrieve agent statuses.
+    This creates a GET API endpoint for the Admin dashboard to retrieve all agent information.
     >>> This is a protected endpoint.
     */
     app.get("/admin", checkAuth, function (req,res) {
@@ -247,7 +269,7 @@ async function createSocketServer() {
                 console.log("Queue Number Created");
                 let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
                 let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
-                let agent = await Agent.findOneAndUpdate({available: true, category: data.category},{$set:{available:false}});
+                let agent = await Agent.findOneAndUpdate({available: true, category: data.category, working: 1},{$set:{available:false}});
                 if(agent) {
                     await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token, agentId: agent.rainbowId, agentName:agent.name}});
                     socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
@@ -278,7 +300,6 @@ async function createSocketServer() {
                     console.log("Error Deleting Queue Number");
                     return;
                 }
-
                 if (guestLeftQueue.agentId!=="Null") {
                     let nextInQueue = await SocketQueue[socket['category']].findOne({agentId:"Null"}).sort({created_at: 1});
                     if(nextInQueue){
