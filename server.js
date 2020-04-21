@@ -80,7 +80,7 @@ async function loadRainbow() {
         process.exit(1);
     }
 }
-// loadRainbow();
+loadRainbow();
 
 
 // Variables for Rainbow guest account creation
@@ -161,7 +161,8 @@ async function createSocketServer() {
                 Agent.create({
                     name: req.query.name,
                     rainbowId: req.query.rainbowId,
-                    available: true,
+                    available: 1,
+                    working: 0,
                     category: req.query.category
                 }).then((agent) => {
                     res.send(agent);
@@ -174,7 +175,7 @@ async function createSocketServer() {
     This creates a PATCH API endpoint for agents' working status to be toggled.
     >>> This is a protected endpoint.
     */
-    app.patch("/admin", checkAuth, function(req,res) {
+    app.patch("/admin/working", checkAuth, function(req,res) {
         jwt.verify(req.auth, "serverKey", (err, authData) => {
             if (err) {
                 res.sendStatus(401)
@@ -187,6 +188,28 @@ async function createSocketServer() {
                         .then((agent) => {
                         res.send(agent);
                     })
+                }
+            }
+        })
+    });
+
+    /*
+    This creates a PATCH API endpoint for agents' availability to be toggled.
+    >>> This is a protected endpoint.
+    */
+    app.patch("/admin/available", checkAuth, function(req,res) {
+        jwt.verify(req.auth, "serverKey", (err, authData) => {
+            if (err) {
+                res.sendStatus(401)
+            } else {
+                if(!req.query.rainbowId){
+                    res.sendStatus(400);
+                } else {
+                    console.log(req.query.rainbowId);
+                    Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {available: {xor: 1}}})
+                        .then((agent) => {
+                            res.send(agent);
+                        })
                 }
             }
         })
@@ -269,7 +292,7 @@ async function createSocketServer() {
                 console.log("Queue Number Created");
                 let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
                 let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
-                let agent = await Agent.findOneAndUpdate({available: true, category: data.category, working: 1},{$set:{available:false}});
+                let agent = await Agent.findOneAndUpdate({available: 1, category: data.category, working: 1},{$set:{available:0}});
                 if(agent) {
                     await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token, agentId: agent.rainbowId, agentName:agent.name}});
                     socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
@@ -307,7 +330,7 @@ async function createSocketServer() {
                         io.to(`${nextInQueue.socketId}`).emit("getAgentSuccess",{agentId:guestLeftQueue.agentId,agentName:guestLeftQueue.agentName, token:nextInQueue.token});
                         console.log("And Agent Was Reassigned");
                     } else {
-                        await Agent.findOneAndUpdate({rainbowId:guestLeftQueue.agentId},{$set:{available:true}});
+                        await Agent.findOneAndUpdate({rainbowId:guestLeftQueue.agentId},{$set:{available:1}});
                         console.log("And Agent Made Available");
                     }
                 } else {

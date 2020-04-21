@@ -11,7 +11,7 @@ const AgentSchema = new Schema({
         required: [true, "Rainbow ID field required"]
     },
     available: {
-        type: Boolean,
+        type: Number,
         required: [true, "Availability field required"]
     },
     working: {
