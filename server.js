@@ -80,12 +80,12 @@ async function loadRainbow() {
         process.exit(1);
     }
 }
-loadRainbow();
+// loadRainbow();
 
 
 // Variables for Rainbow guest account creation
 let language = "en-US";
-let ttl = 86400; // expires after a day
+let ttl = 3600; // expires after an hour
 
 
 const db = require('./db');
@@ -289,22 +289,33 @@ async function createSocketServer() {
             try {
                 socket['category']=data.category;
                 let queue = await SocketQueue[data.category].create({ token: "Null", socketId:socket.id, agentId:"Null", agentName: "Null"});
-                console.log("Queue Number Created");
-                let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
-                let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
+                // Hardcoded token for rainbow failures
+                let token = { token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb3VudFJlbmV3ZWQiOjAsIm1heFRva2VuUmVuZXciOjcsInVzZXIiOnsiaWQiOiI1ZTlmYmYyYTljZmY2YjcyNzlhOWY3MzciLCJsb2dpbkVtYWlsIjoicGJzN21teDdhZTB0bHZwdDQzOHhtd3hodDJ0c2Z3YmdhNnR0cWZ2NkBhNThjZmFjMDViMDcxMWVhYmY3ZTc3ZDE0ZTg3YjkzNi5zYW5kYm94Lm9wZW5yYWluYm93LmNvbSJ9LCJhcHAiOnsiaWQiOiJhNThjZmFjMDViMDcxMWVhYmY3ZTc3ZDE0ZTg3YjkzNiIsIm5hbWUiOiJhY29ybi1iYWNrZW5kIn0sImlhdCI6MTU4NzUyNzQ2NywiZXhwIjoxNTg4ODIzNDY3fQ.kGVB3vrkRQKoZeRKweqXI0y4Gl-Ck3nJnd8KPnZpEwwckOAFECXQRR4Y7ThtWvVNccvx8ry8-m3sN_kYmOZ5x-YBw3JsHv6mWRNvUGoZI1Xz3y_C1WznMioShUIzFvzo2nMQOxFZbVJawwJloKVjg6k3mW4fqKFfvjqAvi4deK84SqxLVizGyiotOGbpea46J9Fnvc81SE1PF_KISOkn5Uuj3g8JqAGz2nD8ia5YtKbTq-FwBhWkV7POIQkuSVxAGVBzFPeEdr6aRXXx27qhhlHoqytcP9EkhZeLk-msBvPTmBvNFguj2zAHO5PJNXkD-78Y3WxUXI5uCK8XWymirw'};
+                // let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
+                // let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
                 let agent = await Agent.findOneAndUpdate({available: 1, category: data.category, working: 1},{$set:{available:0}});
+                console.log(agent);
                 if(agent) {
                     await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token, agentId: agent.rainbowId, agentName:agent.name}});
                     socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                     console.log("And Agent Was Assigned");
                 } else {
-                    await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token}});
-                    console.log("But No Agent Was Available");
+                    let agents = await Agent.find({category: data.category, working: 1});
+                    console.log(agents);
+                    if (agents.length!==0) {
+                        await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token}});
+                        console.log("But No Agent Was Available");
+                    } else {
+                        socket.emit('noAgentsWorking');
+                        console.log("But No Agents Are Working Right Now");
+                    }
                 }
             } catch (e) {
+                console.log("An Error Was Caught");
                 console.log(e.message);
             }
         });
+
 
         /*
         This is the event handler for the 'disconnect' event that is automatically triggered on a socket close. When triggered:
