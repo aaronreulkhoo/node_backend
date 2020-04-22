@@ -289,19 +289,15 @@ async function createSocketServer() {
             try {
                 socket['category']=data.category;
                 let queue = await SocketQueue[data.category].create({ token: "Null", socketId:socket.id, agentId:"Null", agentName: "Null"});
-                // Hardcoded token for rainbow failures
-                let token = { token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb3VudFJlbmV3ZWQiOjAsIm1heFRva2VuUmVuZXciOjcsInVzZXIiOnsiaWQiOiI1ZTlmZDZlZTljZmY2YjcyNzlhOWY3NDQiLCJsb2dpbkVtYWlsIjoiNWhuaWYwbjltcDhkbXdtYTVubzRpNmR0cWlmczQxa3ZwcWRhMDVrYkBhNThjZmFjMDViMDcxMWVhYmY3ZTc3ZDE0ZTg3YjkzNi5zYW5kYm94Lm9wZW5yYWluYm93LmNvbSJ9LCJhcHAiOnsiaWQiOiJhNThjZmFjMDViMDcxMWVhYmY3ZTc3ZDE0ZTg3YjkzNiIsIm5hbWUiOiJhY29ybi1iYWNrZW5kIn0sImlhdCI6MTU4NzUzMzU1MSwiZXhwIjoxNTg4ODI5NTUxfQ.sp3Qd2sQI9kkEXlC_Jokx-eKPGZqX2O1LIA5aNILdANb7jUiyOGheZ2pPHvE-eUou8lXpT_jrr86oiGPnUIHYhdHIH0DPe7B4n8dSQl7gYSeKQ6wmIhDMInLpOJztaj9SQrUGOYk9Ehw3HkyhmpbsSYWELlgEflCyq4uzd2VNPJBe6DzlL8_G1Jfa0t7sPGXgdhE3FmmtMYET6Sb4g4vQjRVxCnuWN5FnZwksV6Z98O5baB6TTt1xUpduo7mXcPpWrrWjmoxbhseY_g44g69tQV0Ov7ds3UZW5p8VsPYg_FgdArCiPQNkfhnOEFCLetotviVJy_nKWTNvmEjkvAFsg'};
-                // let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
-                // let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
+                let guest = await rainbowSDK.admin.createGuestUser(data.firstName, data.lastName, language, ttl);
+                let token = await rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password);
                 let agent = await Agent.findOneAndUpdate({available: 1, category: data.category, working: 1},{$set:{available:0}});
-                console.log(agent);
                 if(agent) {
                     await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token, agentId: agent.rainbowId, agentName:agent.name}});
                     socket.emit("getAgentSuccess",{agentId:agent.rainbowId,agentName:agent.name, token:token.token});
                     console.log("And Agent Was Assigned");
                 } else {
                     let agents = await Agent.find({category: data.category, working: 1});
-                    console.log(agents);
                     if (agents.length!==0) {
                         await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token}});
                         console.log("But No Agent Was Available");
@@ -312,8 +308,9 @@ async function createSocketServer() {
                     }
                 }
             } catch (e) {
-                console.log("An Error Was Caught");
-                console.log(e.message);
+                socket.emit('rainbowError');
+                socket.disconnect();
+                console.log("We have run out of tokens!");
             }
         });
 
