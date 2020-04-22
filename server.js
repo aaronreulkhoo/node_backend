@@ -306,6 +306,7 @@ async function createSocketServer() {
                         await SocketQueue[data.category].findByIdAndUpdate({_id:queue._id}, {$set:{token:token.token}});
                         console.log("But No Agent Was Available");
                     } else {
+                        await SocketQueue[data.category].findOneAndDelete({_id:queue._id});
                         socket.emit('noAgentsWorking');
                         console.log("But No Agents Are Working Right Now");
                     }
