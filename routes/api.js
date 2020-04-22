@@ -1,13 +1,116 @@
 const express = require('express');
 const router=express.Router();
 const Agent = require('../models/agent');
+const Queue = require('../models/queue');
+const RainbowSDK = require("rainbow-node-sdk");
+// Options Config for rainbow
+const options = {
+    rainbow: {
+        host: "sandbox"
+    },
+    credentials: {
+        login: "aaronkhoo@live.com", // To replace by your developer credendials
+        password: "6]<epFf$Er'0" // To replace by your developer credentials
+    },
+    // Application identifier
+    application: {
+        appID: "a58cfac05b0711eabf7e77d14e87b936",
+        appSecret: "JnjQaOpCW9Pc3u2IUQAvyjyiAEINpBo47Vb5S3jSUxHdgQkc3pqFFXGHJPojXbGu"
+    },
+    // Logs options
+    logs: {
+        enableConsoleLogs: false,
+        enableFileLogs: false,
+        "level": 'info',
+        "customLabel": "acorn-backend",
+        "system-dev": {
+            "internals": false,
+            "http": false,
+        },
+        file: {
+            path: "/var/tmp/rainbowsdk/",
+            customFileName: "R-SDK-Node-Sample2",
+            level: "debug",
+            zippedArchive : false/*,
+                maxSize : '10m',
+                maxFiles : 10 // */
+        }
+    },
+    // IM options
+    im: {
+        sendReadReceipt: true
+    },
+    servicesToStart: {
+        "bubbles":  {
+            "start_up":true,
+        }, //need services :
+        "telephony":  {
+            "start_up":true,
+        }, //need services : _contacts, _bubbles, _profiles
+        "channels":  {
+            "start_up":true,
+        }, //need services :
+        "admin":  {
+            "start_up":true,
+        }, //need services :
+        "fileServer":  {
+            "start_up":true,
+        }, //need services : _fileStorage
+        "fileStorage":  {
+            "start_up":true,
+        }, //need services : _fileServer, _conversations
+        "calllog":  {
+            "start_up":true,
+        }, //need services :  _contacts, _profiles, _telephony
+        "favorites":  {
+            "start_up":true,
+        } //need services :
+    }
+};
+// Rainbow SDK Object
+const rainbowSDK = new RainbowSDK(options);
 
-/*
-This PATCH endpoint is where requests are taken to update the individual agent's feedback in the database by clients.
-*/
-router.patch("/review", function(req, res, next){
+
+/*-----------------------Rainbow API SDK*/
+async function loadRainbow() {
+    try {
+        await rainbowSDK.start();
+        console.log("Connected to Rainbow SDK!")
+    } catch (error) {
+        console.error('Unable to connect to Rainbow API', error);
+        process.exit(1);
+    }
+}
+loadRainbow();
+
+//check authentication of the request
+function checkAuth(req,res,next) {
+    const bearerHeader = req.headers['authorization'];
+    if (typeof bearerHeader !=="undefined"){
+        const bearer = bearerHeader.split(' ');
+        req.auth=bearer[1];
+        next()
+    } else {
+        res.sendStatus(401);
+    }
+}
+
+
+let language = "en-US";
+let ttl = 86400; // active for a day
+
+//get all agents' information
+router.get("/status", checkAuth, async (req, res, next) => {
+    Agent.find({}, function(err, agents) {
+        res.send(agents);  
+    });
+});
+
+//Update Agent's Feedbacks
+router.patch("/review", checkAuth, function(req, res, next){
+    
     try{
-        // These methods check the incoming input, and throws an error which is caught by the next() middleware function.
+        //Check if neccessary inputs are received
         console.log('PATCH: api/review');
         if(!req.query.rating1){
             throw new Error("PATCH Request Needs 'Rating1' Number Parameter");
@@ -30,12 +133,10 @@ router.patch("/review", function(req, res, next){
         if(req.query.rating3<0 || req.query.rating3>5){
             throw new Error("'Rating3' Exceeds Threshold Value");
         }
-    } catch(e) {
-        return next(e);
+    }catch(e){
+            return next(e);
     }
-
     Agent.findOne({rainbowId: req.query.agentId}).then(function(agent){
-        //Update the average rating values
         if(!agent){
             throw new Error("Invalid Agent ID");
         }else{
@@ -69,14 +170,14 @@ router.patch("/review", function(req, res, next){
                 }).catch(next);
             }
         }
+    
+        
     }).catch(next);
 
 });
 
-/*
-This POST endpoint is where agents are inserted into the feedback database by an administrator.
-*/
-router.post("/agents", function(req,res,next){
+//Add New Agent
+router.post("/agents", checkAuth, function(req,res,next){
     try{
         console.log('POST received');
         if(!req.query.name){
@@ -94,18 +195,15 @@ router.post("/agents", function(req,res,next){
     }catch(e){
         return next(e);
     }
-    Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true,
-        category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
-        feedbacks:new Array}).then(function(){
+    Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, 
+    category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
+    feedbacks:new Array}).then(function(agent){
         res.send("New Agent Is Created");
     }).catch(next);
 });
 
-
-/*
-This DELETE endpoint is where agents are removed from the feedback database by an administrator.
-*/
-router.delete("/queue", function(req,res,next){
+//Delete One from Queue
+router.delete("/queue", checkAuth, function(req,res,next){
     try {
         //Check if neccessary inputs are received
         console.log('DELETE: api/queue');
