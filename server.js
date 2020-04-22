@@ -350,6 +350,7 @@ async function createSocketServer() {
             } catch (e) {
                 console.log(e.message)
             } finally {
+                io.sockets.emit('CountingSuccess');
                 console.log(Object.keys(io.engine.clients));
             }
         });
