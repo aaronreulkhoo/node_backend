@@ -80,7 +80,7 @@ async function loadRainbow() {
         process.exit(1);
     }
 }
-// loadRainbow();
+loadRainbow();
 
 
 // Variables for Rainbow guest account creation
