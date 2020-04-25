@@ -3,6 +3,7 @@ const router=express.Router();
 const Agent = require('../models/agent');
 const Queue = require('../models/queue');
 const RainbowSDK = require("rainbow-node-sdk");
+const jwt = require('jsonwebtoken');
 // Options Config for rainbow
 const options = {
     rainbow: {
@@ -84,27 +85,42 @@ async function loadRainbow() {
 loadRainbow();
 
 const serverKey= "BBO5e7IVtK9TeSAQ3RTYGsQOWOZ0QAe8k9jbvomydoOUEjK1lwTLIkK4J3yu";
+//check authentication of the request
+function checkAuth(req,res,next) {
+    const bearerHeader = req.headers['authorization'];
+    if (typeof bearerHeader !=="undefined"){
+        req.query.auth=bearerHeader;
+        next()
+    } else {
+        res.sendStatus(401);
+    }
+}
+
 
 let language = "en-US";
 let ttl = 86400; // active for a day
 
-//get all agents' information
-router.get("/status", async (req, res, next) => {
-    try{
-        if(!req.auth){
-            throw new Error("GET Request Needs 'Auth' String Parameter");
-        }
-    }catch(e){
-        return next(e);
-    }
-    
-    if(req.auth===serverKey){
-        Agent.find({}, function(err, agents) {
-            res.send(agents);  
+router.get("/login", async function (req,res) {
+    const adminDetails = {adminName:"someAdmin"};
+    console.log("An Admin Has Logged In");
+    await jwt.sign({adminDetails: adminDetails},"serverKey",(err, auth) => {res.json({
+            auth:auth
         });
-    }else{
-        res.sendStatus(401);
-    }  
+    })
+});
+
+
+
+router.get("/status", checkAuth, async (req, res, next) => {
+    jwt.verify(req.query.auth, "serverKey", (err, authData) => {
+        if (err) {
+            res.sendStatus(401);
+        }else{
+            Agent.find({}, function(err, agents) {
+                res.send(agents);  
+            });
+        }
+    }); 
 });
 
 router.patch("/review", function(req, res, next){
@@ -138,7 +154,7 @@ router.patch("/review", function(req, res, next){
     }catch(e){
             return next(e);
     }
-    if(req.auth===serverKey){
+    if(req.query.auth===serverKey){
         Agent.findOne({rainbowId: req.query.agentId}).then(function(agent){
             if(!agent){
                 throw new Error("Invalid Agent ID");
@@ -179,7 +195,7 @@ router.patch("/review", function(req, res, next){
     }                  
 });
 
-router.post("/agents", function(req,res,next){
+router.post("/agents", checkAuth, function(req,res,next){
     try{
         console.log('POST received');
         if(!req.query.name){
@@ -194,25 +210,23 @@ router.post("/agents", function(req,res,next){
         if(req.query.category<0 || req.query.category>4){
             throw new Error("'Category' Exceeds Threshold Value");
         }
-        if(!req.auth){
-            throw new Error("POST Request Needs 'Auth' String Parameter");
-        }
     }catch(e){
         return next(e);
     }
-    if(req.auth===serverKey){
+    jwt.verify(req.query.auth, "serverKey", (err, authData) => {
+        if (err) {
+            res.sendStatus(401)
+        }else{
         Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, 
-    category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
-    feedbacks:new Array}).then(function(agent){
+            category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
+            feedbacks:new Array}).then(function(agent){
         res.send("New Agent Is Created");
-    }).catch(next);
-    }else{
-        res.sendStatus(401);
-    }
-    
+        }).catch(next);
+        }
+    });
 });
 
-router.delete("/queue", function(req,res,next){
+router.delete("/queue", checkAuth, function(req,res,next){
     
     try {
         //Check if neccessary inputs are received
@@ -226,18 +240,19 @@ router.delete("/queue", function(req,res,next){
     } catch (e) {
         return next(e);
     }
-    if(req.auth===serverKey){
-        Queue.deleteOne({token:req.query.token}).then(function(response){
-            if (response.deletedCount) {
-                res.send("Queue Number Deleted")
-            } else {
-                res.send("Queue Number Not Found")
-            }
-
-        });        
-    }else{
-        res.sendStatus(401);
-    }
+    jwt.verify(req.auth, "serverKey", (err, authData) => {
+        if (err) {
+            res.sendStatus(401)
+        }else{
+            Queue.deleteOne({token:req.query.token}).then(function(response){
+                if (response.deletedCount) {
+                    res.send("Queue Number Deleted")
+                } else {
+                    res.send("Queue Number Not Found")
+                }
+            });  
+        }
+    });        
     
 });
 
