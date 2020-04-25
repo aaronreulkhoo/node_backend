@@ -215,7 +215,7 @@ router.post("/agents", checkAuth, function(req,res,next){
     }
     jwt.verify(req.query.auth, "serverKey", (err, authData) => {
         if (err) {
-            res.sendStatus(401)
+            res.sendStatus(401);
         }else{
         Agent.create({name:req.query.name, rainbowId:req.query.rainbowId, available:true, 
             category:req.query.category, averageRating1: 0, averageRating2:0, numberOfRating:0,
@@ -234,18 +234,18 @@ router.delete("/queue", checkAuth, function(req,res,next){
         if (!req.query.token) {
             throw new Error("DELETE Request Needs 'token' String Parameter");
         }
-        if(!req.auth){
-            throw new Error("DELETE Request Needs 'Auth' String Parameter");
+        if(!req.query.category){
+            throw new Error("DELETE Request Needs 'Category' Number Parameter");
         }
     } catch (e) {
         return next(e);
     }
-    jwt.verify(req.auth, "serverKey", (err, authData) => {
+    jwt.verify(req.query.auth, "serverKey", (err, authData) => {
         if (err) {
             res.sendStatus(401)
         }else{
-            Queue.deleteOne({token:req.query.token}).then(function(response){
-                if (response.deletedCount) {
+            Queue[req.query.category].findOneAndRemove({token:req.query.token}).then(function(response){
+                if (response) {
                     res.send("Queue Number Deleted")
                 } else {
                     res.send("Queue Number Not Found")
