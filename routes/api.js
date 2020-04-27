@@ -40,7 +40,7 @@ router.get("/agentStatus", checkAuth, async (req, res, next) => {
     }catch(e){
         return next(e);
     }
-    Agent.findOne({rainbowId: agentId}, function(err, agent) {
+    Agent.findOne({rainbowId: req.query.agentId}, function(err, agent) {
         if(agent){
             res.send(agents);  
         }else{
