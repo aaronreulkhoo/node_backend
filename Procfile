@@ -1,1 +1,1 @@
-web: node ./server.js
+web: node ./rainbow_server.js
