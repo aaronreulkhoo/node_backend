@@ -89,7 +89,7 @@ let ttl = 86400; // expires after a day
 
 
 const db = require('./db');
-const Agent = require('./models/agent');
+const Agent = require('./models/socketagent');
 const SocketQueue = require('./models/socketqueue');
 const SOCKETPORT = process.env.PORT || 4000;
 const cors = require('cors');
@@ -142,9 +142,15 @@ async function createSocketServer() {
         if (typeof bearerHeader !=="undefined"){
             const bearer = bearerHeader.split(' ');
             req.auth=bearer[1];
-            next()
+            jwt.verify(req.auth, "serverKey", (err, authData) => {
+                if (err) {
+                    res.sendStatus(401);
+                } else {
+                    next();
+                }
+            });
         } else {
-            res.sendStatus(401)
+            res.sendStatus(401);
         }
     }
 
@@ -154,20 +160,14 @@ async function createSocketServer() {
     >>> This is a protected endpoint.
     */
     app.post("/agents", checkAuth, function(req,res) {
-        jwt.verify(req.auth, "serverKey", (err, authData) => {
-            if (err) {
-                res.sendStatus(401)
-            } else {
-                Agent.create({
-                    name: req.query.name,
-                    rainbowId: req.query.rainbowId,
-                    available: 1,
-                    working: 0,
-                    category: req.query.category
-                }).then((agent) => {
-                    res.send(agent);
-                })
-            }
+        Agent.create({
+            name: req.query.name,
+            rainbowId: req.query.rainbowId,
+            available: 1,
+            working: 0,
+            category: req.query.category
+        }).then((agent) => {
+            res.send(agent);
         })
     });
 
@@ -176,21 +176,15 @@ async function createSocketServer() {
     >>> This is a protected endpoint.
     */
     app.patch("/admin/working", checkAuth, function(req,res) {
-        jwt.verify(req.auth, "serverKey", (err, authData) => {
-            if (err) {
-                res.sendStatus(401)
-            } else {
-                if(!req.query.rainbowId){
-                    res.sendStatus(400);
-                } else {
-                    console.log(req.query.rainbowId);
-                    Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {working: {xor: 1}}})
-                        .then((agent) => {
-                        res.send(agent);
-                    })
-                }
-            }
-        })
+        if(!req.query.rainbowId){
+            res.sendStatus(400);
+        } else {
+            console.log(req.query.rainbowId);
+            Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {working: {xor: 1}}})
+                .then((agent) => {
+                res.send(agent);
+            })
+        }
     });
 
     /*
@@ -198,21 +192,15 @@ async function createSocketServer() {
     >>> This is a protected endpoint.
     */
     app.patch("/admin/available", checkAuth, function(req,res) {
-        jwt.verify(req.auth, "serverKey", (err, authData) => {
-            if (err) {
-                res.sendStatus(401)
-            } else {
-                if(!req.query.rainbowId){
-                    res.sendStatus(400);
-                } else {
-                    console.log(req.query.rainbowId);
-                    Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {available: {xor: 1}}})
-                        .then((agent) => {
-                            res.send(agent);
-                        })
-                }
-            }
-        })
+        if(!req.query.rainbowId){
+            res.sendStatus(400);
+        } else {
+            console.log(req.query.rainbowId);
+            Agent.findOneAndUpdate({rainbowId: req.query.rainbowId}, {$bit: {available: {xor: 1}}})
+                .then((agent) => {
+                    res.send(agent);
+                })
+        }
     });
 
 
@@ -221,14 +209,8 @@ async function createSocketServer() {
     >>> This is a protected endpoint.
     */
     app.get("/admin", checkAuth, function (req,res) {
-        jwt.verify(req.auth,"serverKey", (err,authData) => {
-            if (err) {
-                res.sendStatus(401)
-            } else {
-                Agent.find().then((agents) => {
-                    res.send(agents);
-                })
-            }
+        Agent.find().then((agents) => {
+            res.send(agents);
         })
     });
 
@@ -242,13 +224,13 @@ async function createSocketServer() {
 
 
     /*
-    This middleware function screens out incoming socket connections without a valid application signature preventing spam connections.
+    This auth function screens out incoming socket connections without a valid application signature preventing spam connections.
     If not provided or invalid, it rejects the connection.
     */
-    const socketKey= "BBO5e7IVtK9TeSAQ3RTYGsQOWOZ0QAe8k9jbvomydoOUEjK1lwTLIkK4J3yu";
+    const applicationSignature= "BBO5e7IVtK9TeSAQ3RTYGsQOWOZ0QAe8k9jbvomydoOUEjK1lwTLIkK4J3yu";
     io.use(function(socket, next){
         if (socket.handshake.query && socket.handshake.query.key){
-            if (socket.handshake.query.key===socketKey) {
+            if (socket.handshake.query.key===applicationSignature) {
                 next();
             } else {
                 console.log("Authentication Failed, Connection Rejected");
@@ -280,10 +262,12 @@ async function createSocketServer() {
         /*
         This is the event handler for the 'getAgent' event emitted by the client. When triggered:
         1) Creates the queue object and stores the category associated with it.
-        2) Creates the guest account using the incoming data.
-        3) Attempts to find and update an agent which is available.
-        4) Creates the queue object for the incoming socket, with or without the agent assigned.
-        5) If an agent is available, the 'getAgentSuccess' event is fired with the agent's rainbowID, name, and guest token attached.
+        2) Creates the guest account using the incoming data and retrieves their rainbow token
+        3) Attempts to find and update an agent which is available and working.
+        4) If an agent is available, the 'getAgentSuccess' event is fired with the agent's rainbowID, name, and guest token attached.
+        5) Otherwise if agents are working but unavailable, it updates the queue object.
+        5_alt) Or if no agents in that category are working, it fires the 'noAgentsWorking' event to the client and disconnects the socket
+        // We use this order sacrificing some performance to ensure the queue object is available to be deleted from as early as possible in the event of a sudden disconnection
         */
         socket.on('getAgent', async function (data) {
             try {
