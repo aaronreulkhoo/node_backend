@@ -40,18 +40,13 @@ router.get("/agentStatus", checkAuth, async (req, res, next) => {
     }catch(e){
         return next(e);
     }
-    if (err) {
-        res.sendStatus(401);
-    }else{
-        Agent.findOne({rainbowId: agentId}, function(err, agent) {
-            if(agent){
-                res.send(agents);  
-            }else{
-                res.send("Agent Not Found");
-            }
-            
-        });
-    } 
+    Agent.findOne({rainbowId: agentId}, function(err, agent) {
+        if(agent){
+            res.send(agents);  
+        }else{
+            res.send("Agent Not Found");
+        }  
+    });
 });
 
 router.patch("/review", function(req, res, next){
