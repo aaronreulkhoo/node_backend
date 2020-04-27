@@ -35,14 +35,14 @@ router.get("/agentStatus", checkAuth, async (req, res, next) => {
     try{
         console.log('GET: api/agentStatus received');
         if(!req.query.agentId){
-            throw new Error("GET Request Needs 'RainbowId' String Parameter");
+            throw new Error("GET Request Needs 'AgentId' String Parameter");
         }
     }catch(e){
         return next(e);
     }
     Agent.findOne({rainbowId: req.query.agentId}, function(err, agent) {
         if(agent){
-            res.send(agents);  
+            res.send(agent);  
         }else{
             res.send("Agent Not Found");
         }  
