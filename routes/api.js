@@ -31,6 +31,29 @@ router.get("/status", checkAuth, async (req, res) => {
     });
 });
 
+router.get("/agentStatus", checkAuth, async (req, res, next) => {
+    try{
+        console.log('GET: api/agentStatus received');
+        if(!req.query.agentId){
+            throw new Error("GET Request Needs 'RainbowId' String Parameter");
+        }
+    }catch(e){
+        return next(e);
+    }
+    if (err) {
+        res.sendStatus(401);
+    }else{
+        Agent.findOne({rainbowId: agentId}, function(err, agent) {
+            if(agent){
+                res.send(agents);  
+            }else{
+                res.send("Agent Not Found");
+            }
+            
+        });
+    } 
+});
+
 router.patch("/review", function(req, res, next){
     const applicationSignature= "BBO5e7IVtK9TeSAQ3RTYGsQOWOZ0QAe8k9jbvomydoOUEjK1lwTLIkK4J3yu";
     if(req.headers['authorization']!==applicationSignature) {
@@ -155,17 +178,14 @@ This DELETE endpoint is where agents are removed from the feedback database by a
 router.delete("/agents", checkAuth, function(req,res,next){
     try {
         //Check if necessary inputs are received
-        console.log('DELETE: api/queue');
-        if (!req.query.token) {
-            throw new Error("DELETE Request Needs 'token' String Parameter");
-        }
-        if(!req.query.category){
-            throw new Error("DELETE Request Needs 'Category' Number Parameter");
+        console.log('DELETE: api/agents');
+        if (!req.query.agentId) {
+            throw new Error("DELETE Request Needs 'agentId' String Parameter");
         }
     } catch (e) {
         return next(e);
     }
-    Agent[req.query.category].findOneAndRemove({token:req.query.token}).then(function(response){
+    Agent.findOneAndRemove({token:req.query.agentId}).then(function(response){
         if (response) {
             res.send("Queue Number Deleted")
         } else {
@@ -175,196 +195,3 @@ router.delete("/agents", checkAuth, function(req,res,next){
 });
 
 module.exports = router;
-
-
-/**********************RAINBOW SDK OPTIONS (DEPRECATED ON SOCKETING VERSION)**********************/
-// const Queue = require('../models/queue');
-// const RainbowSDK = require("rainbow-node-sdk");
-// // Options Config for rainbow
-// const options = {
-//     rainbow: {
-//         host: "sandbox"
-//     },
-//     credentials: {
-//         login: "aaronkhoo@live.com", // To replace by your developer credendials
-//         password: "6]<epFf$Er'0" // To replace by your developer credentials
-//     },
-//     // Application identifier
-//     application: {
-//         appID: "a58cfac05b0711eabf7e77d14e87b936",
-//         appSecret: "JnjQaOpCW9Pc3u2IUQAvyjyiAEINpBo47Vb5S3jSUxHdgQkc3pqFFXGHJPojXbGu"
-//     },
-//     // Logs options
-//     logs: {
-//         enableConsoleLogs: false,
-//         enableFileLogs: false,
-//         "level": 'info',
-//         "customLabel": "acorn-backend",
-//         "system-dev": {
-//             "internals": false,
-//             "http": false,
-//         },
-//         file: {
-//             path: "/var/tmp/rainbowsdk/",
-//             customFileName: "R-SDK-Node-Sample2",
-//             level: "debug",
-//             zippedArchive : false/*,
-//                 maxSize : '10m',
-//                 maxFiles : 10 // */
-//         }
-//     },
-//     // IM options
-//     im: {
-//         sendReadReceipt: true
-//     },
-//     servicesToStart: {
-//         "bubbles":  {
-//             "start_up":true,
-//         }, //need services :
-//         "telephony":  {
-//             "start_up":true,
-//         }, //need services : _contacts, _bubbles, _profiles
-//         "channels":  {
-//             "start_up":true,
-//         }, //need services :
-//         "admin":  {
-//             "start_up":true,
-//         }, //need services :
-//         "fileServer":  {
-//             "start_up":true,
-//         }, //need services : _fileStorage
-//         "fileStorage":  {
-//             "start_up":true,
-//         }, //need services : _fileServer, _conversations
-//         "calllog":  {
-//             "start_up":true,
-//         }, //need services :  _contacts, _profiles, _telephony
-//         "favorites":  {
-//             "start_up":true,
-//         } //need services :
-//     }
-// };
-// // Rainbow SDK Object
-// const rainbowSDK = new RainbowSDK(options);
-
-
-/**********************RAINBOW SDK LOAD (DEPRECATED ON SOCKETING VERSION)**********************/
-// async function loadRainbow() {
-//     try {
-//         await rainbowSDK.start();
-//         console.log("Connected to Rainbow SDK!")
-//     } catch (error) {
-//         console.error('Unable to connect to Rainbow API', error);
-//         process.exit(1);
-//     }
-// }
-// loadRainbow();
-
-// var guestToken;
-// let language = "en-US";
-// let ttl = 86400; // active for a day
-
-/**********************INITIAL GET FUNCTION (DEPRECATED ON SOCKETING VERSION)**********************/
-// router.get("/agents", async(req,res,next) => {
-//     try {
-//         //Check if neccessary inputs are received
-//         console.log('GET: api/agents');
-//         if (!req.query.category) {
-//             throw new Error("GET Request Needs 'Category' Number Parameter");
-//         }
-//         if (!req.query.firstName) {
-//             throw new Error("GET Request Needs 'FirstName' String Parameter");
-//         }
-//         if (!req.query.lastName) {
-//             throw new Error("GET Request Needs 'LastName' String Parameter");
-//         }
-//         if(req.query.category>4 || req.query.category<0){
-//             throw new Error("'Category' Exceeds Threshold Value");
-//         }
-//     } catch (e) {
-//         return next(e);
-//     }
-//     //Create Guest With Name
-//     rainbowSDK.admin.createGuestUser(req.query.firstName, req.query.lastName, language, ttl).then((guest) => {
-//         //Find any agent available
-//         Agent.findOneAndUpdate({available: true, category: req.query.category},{$set:{'available':false}}, function(err,agent){
-//             rainbowSDK.admin.askTokenOnBehalf(guest.loginEmail, guest.password).then((token)=>{
-//                 guestToken = token.token;
-//                 if(!agent) {
-//                     //No available agent, guest pushed into queue
-//                     Queue[req.query.category].create({guestFirstName: req.query.firstName, guestLastName: req.query.lastName, token:token.token, agentId:"Null", agentName: "Null"}).then(function(){
-//                         res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:"Null",agentName:"Null", token:token.token});
-//                     }).catch(next);
-//                 } else {
-//                     //Agent available, ready to make connection
-//                     res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:agent.rainbowId,agentName:agent.name, token:token.token});
-//                 }
-//             });
-//         }).catch(next);
-//     });
-// });
-
-/**********************POLLING GET FUNCTION (DEPRECATED ON SOCKETING VERSION)**********************/
-// router.get("/queue", async(req,res,next) => {
-//     try {
-//         //Check if neccessary inputs are received
-//         console.log('GET: api/queue');
-//         if (!req.query.token) {
-//             throw new Error("GET Request Needs 'Token' String Parameter");
-//         }
-//         if (!req.query.category) {
-//             throw new Error("Get Request Needs 'Category' Number Parameter");
-//         }
-//         if (req.query.category>4 || req.query.category<0) {
-//             throw new Error("'Category' Exceeds Threshold Value");
-//          }
-//     } catch (e) {
-//         return next(e);
-//     }
-//     Queue[req.query.category].findOne({token:req.query.token}).then(function(guestFound) {
-//         if(!guestFound){
-//             throw new Error('Invalid Queue Token');
-//         } else{
-//             if(guestFound.agentId!=='Null'){ //If agent has been assigned
-//                 Queue[req.query.category].findOneAndDelete({token:req.query.token}).then(function (guestDeleted) {
-//                     res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:guestDeleted.agentId, agentName:guestDeleted.agentName, token:guestDeleted.token});
-//                 }).catch(next)
-//             }else{
-//                 res.send({guestFirstName: req.query.firstName, guestLastName: req.query.lastName,category: req.query.category, agentId:guestFound.agentId, agentName:guestFound.agentName, token:guestFound.token});
-//             }
-//         }
-//     }).catch(next);
-// });
-
-/**********************SESSION END PATCHING FUNCTION (DEPRECATED ON SOCKETING VERSION)**********************/
-// router.patch("/agents", async (req,res, next) => { // sync must catch errors
-//     try {
-//         //Check if neccessary inputs are received
-//         console.log('PATCH: api/agents');
-//         if (!req.query.agentId) {
-//             throw new Error("PATCH Request Needs 'AgentId' Number Parameter");
-//         }
-//     } catch (e) {
-//         return next(e);
-//     }
-//     Agent.findOne({rainbowId:req.query.agentId}).then(function(agent){
-//         if(!agent){
-//             throw new Error('Invalid Agent ID');
-//         }else{
-//             //Find the eariest guest that is not assigned to an agent
-//             Queue[agent.category].findOne({agentId:"Null"}).sort({created_at: 1}).exec(function(err, guestInQueue){
-//                 if(!guestInQueue){//If no such guest found in the queue, the agent is available
-//                     Agent.findOneAndUpdate({rainbowId:agent.rainbowId}, {$set:{'available':true}}).then(function(){
-//                         console.log("Agent has been made available");
-//                         res.send("Agent has been made available");
-//                     }).catch(next);
-//                 }else{//If some guest found, assign the agent to the guest
-//                     Queue[agent.category].findByIdAndUpdate({_id:guestInQueue._id}, {$set:{'agentId':agent.rainbowId, 'agentName':agent.name}}).then(function(){
-//                         console.log("Agent has been reassigned");
-//                         res.send("Agent has been reassigned");
-//                     }).catch(next);
-//                 }
-//             });
-//         }
-//     }).catch(next);
-// });
