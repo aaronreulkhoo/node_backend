@@ -2,7 +2,10 @@
   "name": "node_backend",
   "version": "1.0.0",
   "description": "backend_server",
-  "main": "rainbow_server.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node ./index.js"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
